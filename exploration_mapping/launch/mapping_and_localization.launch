@@ -1,0 +1,22 @@
+<!-- This file will launch the AMCL (Adaptive Monte Carlo Localization) node with the parameters 
+specified in the yaml file, together with the map_server node responsible for storing the generated 
+map and the gmapping node responsible for mapping the environment-->
+
+<launch>
+    <arg name="scan_topic" default="/kobuki/laser/scan"/>
+
+    <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+        <rosparam file="$(find exploration_mapping_loc)/config/gmapping_params.yaml" command="load"/>
+        <remap from="laser" to="$(arg scan_topic)"/>
+    </node>
+    <!-- cannot use AMCL since we need a known map for it, can use robot_localization instead 
+    can only use AMCL if environment is mapped
+    <node name="amcl" type="amcl" pkg="amcl">
+        <rosparam file="$(find exploration_mapping_loc)/config/amcl_params.yaml" command="load"/>
+        <remap from="scan" to="$(arg scan_topic)"/>
+    </node>
+    -->
+
+    <node name="map_server" type="map_server" pkg="map_server"/>
+
+</launch>

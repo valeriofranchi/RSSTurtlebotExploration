@@ -1,0 +1,46 @@
+<!-- This file will launch the find_object_2d node or any other 
+script responsible for the perception side of the robot mission-->
+
+<launch>
+
+    <arg name="gui"             default="true"/>
+    <arg name="image_topic"     default="image"/>
+    <arg name="objects_path"    default="~/objects"/>
+    <arg name="object_prefix"   default="object"/>
+    <arg name="settings_path"   default="~/ros/find_object_2d.ini"/>
+    <arg name="subscribe_depth" default="true"/>
+    <arg name="approx_sync"     default="true"/>
+	<arg name="pnp"             default="true"/>
+
+    <arg name="rgb_topic"         default="camera/rgb/image_rect_color"/>
+	<arg name="depth_topic"       default="camera/depth_registered/image_raw"/>
+	<arg name="camera_info_topic" default="camera/rgb/camera_info"/>
+
+    <node name="find_object_2d" type="find_object_2d" pkg="find_object_2d">
+        <param name="gui"             value="$(arg gui)" type="bool"/>
+        <param name="objects_path"    value="$(arg objects_path)" type="str"/>
+        <param name="settings_path"   value="$(arg settings_path)" type="str"/>
+		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+
+        <remap from="image" to="$(arg image_topic)"/>
+
+    <!-- if want to find 3D poses of objects detected, remove node above and uncomment one below
+
+    <node name="find_object_3d" pkg="find_object_2d" type="find_object_2d" output="screen">
+	    <param name="gui" value="$(arg gui)" type="bool"/>
+	    <param name="settings_path" value="$(arg settings_path)" type="str"/>
+	    <param name="subscribe_depth" value="$(arg subscribe_depth)" type="bool"/>
+	    <param name="objects_path" value="$(arg objects_path)" type="str"/>
+	    <param name="object_prefix" value="$(arg object_prefix)" type="str"/>
+	    <param name="approx_sync" value="$(arg approx_sync)" type="bool"/>
+	    <param name="pnp" value="$(arg pnp)" type="bool"/>
+				
+	    <remap from="rgb/image_rect_color" to="$(arg rgb_topic)"/>
+	    <remap from="depth_registered/image_raw" to="$(arg depth_topic)"/>
+	    <remap from="depth_registered/camera_info" to="$(arg camera_info_topic)"/>
+	</node>
+
+        -->
+    </node>
+
+</launch>

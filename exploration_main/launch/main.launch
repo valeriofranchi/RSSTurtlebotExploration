@@ -1,0 +1,17 @@
+    <!-- This file will launch all the necessary nodes, it is the main launch file-->
+<launch>
+    <!-- Launch mapping and sensor fusion localization-->
+    <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
+
+    <!-- Launch perception-->
+    <include file="$(find exploration_perception)/launch/perception.launch"/>
+
+    <!-- Launch move_base-->
+    <include file="$(find exploration_navigation)/launch/includes/move_base_launch.launch"/>
+
+    <!-- Launch frontier exploration-->
+    <include file="$(find exploration_main)/launch/includes/exploration_aunch.launch"/>
+
+    <!-- add rviz starter by saving the configuration you want then go cd, cd .rviz, ls, and copy "cat savedfile.rviz" into .rviz file and load it from here -->
+
+</launch>
