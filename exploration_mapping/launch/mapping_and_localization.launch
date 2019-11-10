@@ -3,10 +3,10 @@ specified in the yaml file, together with the map_server node responsible for st
 map and the gmapping node responsible for mapping the environment-->
 
 <launch>
-    <arg name="scan_topic" default="/kobuki/laser/scan"/>
+    <arg name="scan_topic" default="/scan"/>
 
     <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
-        <rosparam file="$(find exploration_mapping_loc)/config/gmapping_params.yaml" command="load"/>
+        <rosparam file="$(find exploration_mapping)/params/gmapping_params.yaml" command="load"/>
         <remap from="laser" to="$(arg scan_topic)"/>
     </node>
     <!-- cannot use AMCL since we need a known map for it, can use robot_localization instead 
@@ -16,7 +16,5 @@ map and the gmapping node responsible for mapping the environment-->
         <remap from="scan" to="$(arg scan_topic)"/>
     </node>
     -->
-
-    <node name="map_server" type="map_server" pkg="map_server"/>
 
 </launch>
