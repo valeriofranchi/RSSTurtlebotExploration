@@ -1,0 +1,7 @@
+<!-- Launch file for Coin Detection and Recognition Program-->
+<launch>    
+    <arg name="image_file_path" default=""/>
+    <node pkg="Coin_Recognition" type="coin_detection.py" name="coin_detection_node" output="screen">
+        <param name="image" value="$(arg image_file_path)" type="str"/>
+    </node>
+</launch>
