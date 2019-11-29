@@ -4,7 +4,7 @@
     <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
 
     <!-- Launch perception-->
-    <include file="$(find exploration_perception)/launch/perception.launch"/>
+    <!--include file="$(find exploration_perception)/launch/perception.launch"/-->
 
     <!-- Launch move_base-->
     <include file="$(find exploration_navigation)/launch/includes/move_base_launch.launch"/>
@@ -12,6 +12,11 @@
     <!-- Launch frontier exploration-->
     <include file="$(find exploration_main)/launch/includes/exploration_aunch.launch"/>
 
-    <!-- add rviz starter by saving the configuration you want then go cd, cd .rviz, ls, and copy "cat savedfile.rviz" into .rviz file and load it from here -->
+    <!-- Launch rviz config file -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find exploration_main)/rviz/default.rviz"/>
+
+    <!-- Launch main node -->
+    <!--node pkg="exploration_main" type="main_exp.py" name="main_node" output="screen">
+    </node-->
 
 </launch>

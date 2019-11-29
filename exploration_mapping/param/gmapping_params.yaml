@@ -1,0 +1,55 @@
+#
+# http://www.ros.org/wiki/gmapping
+#
+#The most important parameters in these file are:
+#maxUrange: This parameter sets how far your laser will be considered to create the map. Greater range will create maps faster and it's less probable that the robot gets lost. 
+#The downside is that it consumes more resources.
+#throttle_scans: Very useful for lowering resource consumption.
+
+throttle_scans:       1
+base_frame:           base_footprint
+map_frame:            map
+odom_frame:           odom
+map_update_interval:  5.0 
+
+# Unset maxUrange and maxRange and it will autodetect
+maxUrange:            6.0
+sigma:                0.05
+kernelSize:           1 
+lstep:                0.05
+astep:                0.05
+iterations:           5 
+lsigma:               0.075
+ogain:                3.0
+lskip:                0
+minimumScore:         200
+
+srr:                  0.1
+srt:                  0.2
+str:                  0.1
+stt:                  0.2
+
+linearUpdate:         0.5      
+angularUpdate:        0.436 
+temporalUpdate:       -1.0    
+
+resampleThreshold:    0.5    
+particles:            80
+
+# Initial Map Size & Resolution
+xmin:                -1.0
+ymin:                -1.0
+xmax:                 1.0
+ymax:                 1.0
+delta:                0.05
+
+llsamplerange:        0.01           
+llsamplestep:         0.01
+lasamplerange:        0.005  
+lasamplestep:         0.005
+
+transform_publish_period:  0.05       
+occ_thresh:           0.25
+maxRange:             6.0
+
+tf_delay:             0.1

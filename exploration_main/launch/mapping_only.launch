@@ -1,8 +1,9 @@
     <!-- This file will only launch the mapping and localization node-->
 <launch>
-
+    <!-- Launch mapping package launch file -->
     <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
 
-    <!-- add rviz starter by saving the configuration you want then go cd, cd .rviz, ls, and copy "cat savedfile.rviz" into .rviz file and load it from here -->
+     <!-- Launch rviz config file -->
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find exploration_main)/rviz/mapping_config.rviz"/>
 
 </launch>

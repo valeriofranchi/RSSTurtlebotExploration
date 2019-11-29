@@ -6,15 +6,8 @@ map and the gmapping node responsible for mapping the environment-->
     <arg name="scan_topic" default="/scan"/>
 
     <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
-        <rosparam file="$(find exploration_mapping)/params/gmapping_params.yaml" command="load"/>
+        <rosparam file="$(find exploration_mapping)/param/gmapping_params.yaml" command="load"/>
         <remap from="laser" to="$(arg scan_topic)"/>
     </node>
-    <!-- cannot use AMCL since we need a known map for it, can use robot_localization instead 
-    can only use AMCL if environment is mapped
-    <node name="amcl" type="amcl" pkg="amcl">
-        <rosparam file="$(find exploration_mapping_loc)/config/amcl_params.yaml" command="load"/>
-        <remap from="scan" to="$(arg scan_topic)"/>
-    </node>
-    -->
 
 </launch>
