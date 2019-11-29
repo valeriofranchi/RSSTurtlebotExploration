@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="exploration_perception" type="get_calib_images.py" name="tf_node" output="screen">
+	</node>
+</launch>
