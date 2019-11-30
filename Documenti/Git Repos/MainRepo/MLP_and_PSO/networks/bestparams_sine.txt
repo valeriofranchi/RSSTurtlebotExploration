@@ -1,0 +1,43 @@
+Number of layers:3
+Network size:[4, 4, 1]
+Input count:1
+Neurons:  layer 0
+    neuron 0
+    w:[-3.56429174]
+    b:2.10629175159
+    a:<function act_sigmoid at 0x7fb7da75ade8>
+    neuron 1
+    w:[2.64484644]
+    b:2.67166711016
+    a:<function act_sigmoid at 0x7fb7da75ade8>
+    neuron 2
+    w:[0.47813867]
+    b:-3.13404859472
+    a:<function act_tanh at 0x7fb7da75aed8>
+    neuron 3
+    w:[-2.90073006]
+    b:1.18097852466
+    a:<function act_tanh at 0x7fb7da75aed8>
+  layer 1
+    neuron 0
+    w:[-1.5671413   0.6922615   4.6817532   3.59534872]
+    b:-0.687894070893
+    a:<function act_tanh at 0x7fb7da75aed8>
+    neuron 1
+    w:[ 0.97070725 -0.27911773  0.87010538  2.79468841]
+    b:3.7820405042
+    a:<function act_sigmoid at 0x7fb7da75ade8>
+    neuron 2
+    w:[-0.78980508  2.84619287 -0.29480021 -0.52012291]
+    b:-1.54873397142
+    a:<function act_tanh at 0x7fb7da75aed8>
+    neuron 3
+    w:[ 2.53518772  0.00730252  2.93610167 -2.27219544]
+    b:-3.87208691597
+    a:<function act_tanh at 0x7fb7da75aed8>
+  layer 2
+    neuron 0
+    w:[ 1.7244655   3.68747081  2.79104233 -1.5286937 ]
+    b:-2.70608137664
+    a:<function act_cos at 0x7fb7da75af50>
+Fitness of Network: -0.0013324526232
