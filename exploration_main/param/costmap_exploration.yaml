@@ -14,7 +14,7 @@ plugins:
 - {name: inflation,         type: "costmap_2d::InflationLayer"}
 
 explore_boundary:
-  resize_to_boundary: false #when receiving polygonal boundary, it resizes parent costmap accordingly
+  resize_to_boundary: true #when receiving polygonal boundary, it resizes parent costmap accordingly
   frontier_travel_point: middle #other options closest point to robot, middle point of frontier 
   #centroid (cartesian average) of all frontier points 
   #set to false for gmapping, true if re-exploring a known area
@@ -26,4 +26,4 @@ sensor:
   laser: {data_type: LaserScan, clearing: true, marking: true, topic: /scan, inf_is_valid: true, raytrace_range: 4.0, obstacle_range: 4.0}
 
 inflation:
-  inflation_radius: 0.30
+  inflation_radius: 0.50

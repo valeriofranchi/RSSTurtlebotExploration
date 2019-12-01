@@ -3,6 +3,7 @@
 import rospy
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
+from exploration_perception.msg import DangerSign
 
 def tf_listener(data):
 	global transform

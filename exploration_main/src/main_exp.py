@@ -1,16 +1,22 @@
 #! /usr/bin/env python
 
+from math import pi, fabs
 import rospy
 import actionlib
-import geometry_msgs
 from geometry_msgs.msg import Twist, Vector3, PoseStamped
 from geometry_msgs.msg import PolygonStamped, PointStamped, Point32, Point
 from frontier_exploration.msg import ExploreTaskAction, ExploreTaskGoal
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from std_msgs.msg import Header, ColorRGBA
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from math import pi, fabs
+from exploration_perception.msg import DangerSign
+from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker
-from frontier_exploration.srv import GetNextFrontier, GetNextFrontierRequest
+
+PENDING = 0
+ACTIVE = 1
+DONE = 2
+WARN = 3
+ERROR = 4
 
 class TurtlebotExploration:
 
@@ -18,25 +24,22 @@ class TurtlebotExploration:
         #Initializes node, publishers and subscribers 
         rospy.init_node('map_navigation')
         self.movement_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
-        self.marker_pub = rospy.Publisher('rviz_marker', Marker, queue_size=1)
+        self.marker_pub = rospy.Publisher('/rviz_marker', Marker, queue_size=1)
+        self.sign_sub = rospy.Subscriber('/danger_signs', DangerSign, self.sign_callback) #modify with correct type 
         self.rate = rospy.Rate(20)
 
-        #variable describing if there is a new frontier to explore or not
-        self.next_frontier = True
-
         #current robot pose coordinates updated by feedback callback function 
-        self.current_pose = PoseStamped()
-        self.curr_x = 0.0
-        self.curr_y = 0.0
-        self.curr_yaw = 0.0
+        self.pose = PoseStamped()
+        self.x = 0.0
+        self.y = 0.0
+        self.yaw = 0.0
 
-        #initialize explore_server action server 
-        self.exploration_client = None 
-        self.initialize_action_server()
+        #current target frontier to explore 
+        self.frontier = PoseStamped()    
 
-        #initialize frontier_exploration service server 
-        self.frontier_service = None
-        self.initialize_service_server()        
+        #danger sign message and boolean describing if detection happened
+        self.danger_sign = DangerSign()
+        self.sign_detected = False
 
         #start exploration
         self.perform_exploration()
@@ -44,38 +47,50 @@ class TurtlebotExploration:
     """
     This function initializes the explore_server action server and creates an action client object
     """
-    def initialize_action_server(self):
+    def initialize_action_server(self, action_server_name, action):
         # Creates the SimpleActionClient
-        action_server_name = '/explore_server'
-        self.exploration_client = actionlib.SimpleActionClient(action_server_name, ExploreTaskAction)
+        client = actionlib.SimpleActionClient(action_server_name, action)
         # Waits until the action server has started up 
         rospy.loginfo('Waiting for action Server ' + action_server_name)
-        self.exploration_client.wait_for_server()
+        client.wait_for_server()
         rospy.loginfo('Action Server Found...' + action_server_name)
+        #return SimpleActionClient
+        return client
+  
+    """
+    This function will be called when feedback is received from the explore_server action server.
+    It prints the current location of the robot based in the form of its x,y and yaw coordinates 
+    and stores the location of the current frontier the robot is exploring.
+    """
+    def exploration_feedback_cb(self, feedback):
+        self.pose = feedback.base_position
+        self.x = feedback.base_position.pose.position.x
+        self.y = feedback.base_position.pose.position.y
+        c_or = feedback.base_position.pose.orientation
+        (_, _, self.yaw) = euler_from_quaternion([c_or.x, c_or.y, c_or.z, c_or.w])
+        self.frontier = feedback.next_frontier.pose
+        rospy.loginfo("Feedback received")
+        rospy.loginfo("Robot Position: x: {}, y: {}, yaw: {}".format(self.x, self.y, self.yaw))
+        rospy.loginfo("Target Frontier: x: {}, y: {}".format(self.frontier.position.x, self.frontier.position.y))
     
     """
-    This function initializes the frontier_exploration service server and creates a service client object
+    This function will be called when feedback is received from the move base action server.
+    It prints the current location of the robot based in the form of its x,y and yaw coordinates.
     """
-    def initialize_service_server(self):
-        service_name = '/explore_server/explore_costmap/explore_boundary/get_next_frontier'
-        #wait for service to be running
-        rospy.loginfo('Waiting for service ' + service_name)
-        rospy.wait_for_service(service_name)
-        rospy.loginfo('Service Found...' + service_name)
-        #create a connection to the service
-        self.frontier_service = rospy.ServiceProxy(service_name, GetNextFrontier)
-
-    """
-    This function will be called when feedback is received from the action server.
-    It prints the current location of the robot based on the x,y and theta coordinates.
-    """
-    def feedback_callback(self, feedback):
-        self.current_pose = feedback.base_position
-        self.curr_x = feedback.base_position.pose.position.x
-        self.curr_y = feedback.base_position.pose.position.y
+    def movebase_feedback_cb(self, feedback):
+        self.x = feedback.base_position.pose.position.x
+        self.y = feedback.base_position.pose.position.y
         c_or = feedback.base_position.pose.orientation
-        (_, _, self.curr_yaw) = euler_from_quaternion([c_or.x, c_or.y, c_or.z, c_or.w])
-        rospy.loginfo('Feedback received => Current Robot Position: x = %f, y = %f, theta = %f', self.curr_x, self.curr_y, self.curr_yaw)
+        (_, _, self.yaw) = euler_from_quaternion([c_or.x, c_or.y, c_or.z, c_or.w])
+        rospy.loginfo("Feedback received\nRobot Position: x: {}, y: {}, yaw: {}".format(self.x, self.y, self.yaw))
+    
+    """
+    Subscriber to the '/danger_signs' topic; when a sign is detected it stores the DangerSign object and assigns the 
+    boolean sign_detected a True value.
+    """
+    def sign_callback(self, data):
+        self.danger_sign = data
+        self.sign_detected = True
 
     """
     This function waits for at least for one subscriber to be active before publishing.
@@ -88,44 +103,40 @@ class TurtlebotExploration:
                 self.movement_pub.publish(rotate)
                 break
             self.rate.sleep()
+    
+    """
+    Rotate robot 360 degrees on the spot. 
+    """
+    def rotate360(self):
+        move = Twist()
+        initial_yaw = self.yaw
+        move.angular.z = 0.1
+
+        #check when the 360 sweep has been finished 
+        while True:
+            self.movement_pub.publish(move)
+            if (initial_yaw > 0.0 and self.yaw < 0.0) or (initial_yaw < 0.0 and self.yaw < initial_yaw):
+                self.yaw += 2*pi
+            difference = fabs(initial_yaw - self.yaw)
+            if difference > 2*pi:
+                break
+
+        #stop the robot rotation
+        move.angular.z = 0.0
+        self.publish_once(move)
+
     """
     This function performs the turtlebot exploration of the unknown environment until no next frontier to explore is found.
     """
     def perform_exploration(self):
-		#while a new frontier to explore exists, continue with the navigation goals
-        while self.next_frontier:
-            #request to service a new frontier for exploration 
-            """
-            before sending the request need to create the bounding exploration polygon and start the navigation
-            how do we stop the navigation? and make us control it ? using get next frontier 
-            """
-            frontier_request = GetNextFrontierRequest()
-            frontier_request.start_pose = self.current_pose
-            result = self.frontier_service(frontier_request)
-		
-            #retrieve x y and yaw coordinates for next exploration goal 
-            new_x, new_y = result.pose.position.x, result.pose.position.y
-            new_orient = result.pose.orientation
-            (_, _, new_yaw) = euler_from_quaternion([new_orient.x, new_orient.y, new_orient.z, new_orient.w])
-
-            #send new pose to explore_server action server 
-            self.send_goal(new_x, new_y, new_yaw)
-            rospy.loginfo("Sending goal to main algorithm -- x:%f, y:%f, theta:%f", new_x ,new_y, new_yaw)
-
-        rospy.loginfo("Turtlebot exploration has finished...")
+        #before the exploration starts, make robot perform an initial 360 sweep of the area 
+        self.rotate360()
         
-        #display results of exploration: images detected and their coordinates in the map world 
+        #initialise action server and SimpleActionClient 
+        exploration_server = '/explore_server'
+        exploration_client = self.initialize_action_server(exploration_server, ExploreTaskAction)  
 
-    """
-    This function takes a 2D goal coordinate as input, creates a Pose object, publishes it to the explore_server server and performs the navigation.
-    """
-    def send_goal(self, x, y, yaw):
-        # Creates a goal to send to the action server.
-        #pose = geometry_msgs.msg.Pose()
-        #pose.position.x = x
-        #pose.position.y = y
-        #q = quaternion_from_euler(0, 0, yaw)
-        #pose.orientation = geometry_msgs.msg.Quaternion(*q)
+        #perform exploration
         goal = ExploreTaskGoal()
 
         #define boundaries of exploration 
@@ -136,55 +147,48 @@ class TurtlebotExploration:
         polygon_boundary.header.frame_id = 'map'
         polygon_boundary.header.stamp = rospy.Time.now()
         
-        #center point for frontier exploration, inside explore_boundary 
-        point_stamped = PointStamped()
+        #centre point for frontier exploration, inside explore_boundary 
+        centre_point = PointStamped()
         point = Point(x=0.0, y=0.0, z=0.0)
-        point_stamped.point = point
-        point_stamped.header.frame_id = 'map'
-        point_stamped.header.stamp = rospy.Time.now()
+        centre_point.point = point
+        centre_point.header.frame_id = 'map'
+        centre_point.header.stamp = rospy.Time.now()
 
         goal.explore_boundary = polygon_boundary
-        goal.explore_center = point_stamped
+        goal.explore_center = centre_point
 
         #Creates an rviz marker for the goal
-        #robot_marker = Marker(type=Marker.ARROW, action=Marker.ADD, scale=Vector3(0.9, 0.05, 0.1),
-        #    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
-        #robot_marker.pose = pose
+        frontier_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.35, 0.35, 0.35),
+            header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
+        frontier_marker.pose = self.frontier
 
         # Sends the goal to the action server.
         rospy.loginfo('Sending goal to action server: %s', goal)
-        self.exploration_client.send_goal(goal, feedback_cb=self.feedback_callback)
+        exploration_client.send_goal(goal, feedback_cb=self.exploration_feedback_cb)
 
         # state_result will give the FINAL STATE. Will be 1 when Active, and 2 if NO ERROR, 3 If Any Warning, and 3 if ERROR
-        state_result = self.exploration_client.get_state()
+        state_result = exploration_client.get_state()
 
         rospy.loginfo("state_result: "+str(state_result))
-
-        # We create some constants with the corresponing vaules from the SimpleGoalState class
-        PENDING = 0
-        ACTIVE = 1
-        DONE = 2
-        WARN = 3
-        ERROR = 4
-
-        rospy.loginfo("[Result] State: "+str(state_result))
-        if state_result == PENDING:
-            rospy.loginfo("Action goal is pending...")
-        if state_result == ACTIVE:
-            rospy.loginfo("Action goal is being performed...")
 
         while state_result < DONE:
             rospy.loginfo("Checking for danger signs while performing exploration....")
 
             #self.exploration_client.cancel_goal()
-            #print "Cancelling goal..."
-            #rospy.loginfo("Sending goal to main algorithm -- x:%f, y:%f, theta:%f",x,y,yaw)
+            #print("Cancelling goal...")
 
-            #publish rviz marker for goal
-            #self.marker_pub.publish(robot_marker)
+            #publish rviz marker for frontier 
+            self.marker_pub.publish(frontier_marker)
 
+            if self.sign_detected:
+                sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
+                    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
+                """PROBLEM ONE IS A POSE OTHER IS A TRANSFORM MESSAGE """
+                sign_marker.pose = self.danger_sign.sign_pose.transform
+                self.sign_detected = False
+                
             #update state value and display it on the log 
-            state_result = self.exploration_client.get_state()
+            state_result = exploration_client.get_state()
             rospy.loginfo("state_result: "+str(state_result))
             self.rate.sleep()
 
@@ -196,28 +200,66 @@ class TurtlebotExploration:
         else:
           # Waits for the server to finish performing the action.
           print 'Waiting for result...'
-          self.exploration_client.wait_for_result()
+          exploration_client.wait_for_result()
         rospy.loginfo("Frontier Reached! Success!")
-		
-        #make the robot make a slow 360 degree sweep to update the map 
-        """move = Twist()
-        initial_yaw = self.curr_yaw
-        move.angular.z = 0.1
+    
+    """
+    put description, locations are PoseStamped messages
+    """
+    def check_locations(self, locations):
+         #initialise action server and SimpleActionClient 
+        movebase_server = '/move_base'
+        movebase_client = self.initialize_action_server(movebase_server, MoveBaseAction)  
 
-        #check when the 360 sweep has been finished 
-        while True:
-            self.movement_pub.publish(move)
-            if (initial_yaw > 0.0 and self.curr_yaw < 0.0) or (initial_yaw < 0.0 and self.curr_yaw < initial_yaw):
-                self.curr_yaw += 2*pi
-            difference = fabs(initial_yaw - self.curr_yaw)
-            if difference > 2*pi:
-                break
+        for location in locations:
+            # Creates a goal to send to the action server.
+            goal = MoveBaseGoal()
+            goal.target_pose.pose = location.pose
+            goal.target_pose.header.frame_id = 'map'
+            goal.target_pose.header.stamp = rospy.Time.now()
 
-        #stop the robot rotation
-        move.angular.z = 0.0
-        self.publish_once(move)
+            #create goal marker 
+            goal_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.35, 0.35, 0.35),
+            header=Header(frame_id='map'), color=ColorRGBA(0.0, 1.0, 0.0, 1.0))
+            goal_marker.pose = location.pose
 
-        return self.exploration_client.get_result()"""
+            # Sends the goal to the action server.
+            rospy.loginfo('Sending goal to action server: %s', goal)
+            movebase_client.send_goal(goal, feedback_cb=self.movebase_feedback_cb)
 
-#create TurtlebotExploration object and perform environment exploration
+            #perform navigation
+            state_result = movebase_client.get_state()
+
+            rospy.loginfo("state_result: "+str(state_result))
+            if state_result == PENDING:
+                rospy.loginfo("Action goal is pending...")
+            if state_result == ACTIVE:
+                rospy.loginfo("Action goal is being performed...")
+                
+            while state_result < DONE:
+                rospy.loginfo("Checking for danger signs while performing navigation....")
+
+                #self.exploration_client.cancel_goal()
+                #print("Cancelling goal...")
+
+                #publish rviz marker for goal
+                self.marker_pub.publish(goal_marker)
+
+                if self.sign_detected:
+                    sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
+                        header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
+                    """PROBLEM ONE IS A POSE OTHER IS A TRANSFORM MESSAGE """
+                    sign_marker.pose = self.danger_sign.sign_pose.transform
+                    self.sign_detected = False
+                
+                #update state value and display it on the log 
+                state_result = movebase_client.get_state()
+                rospy.loginfo("state_result: "+str(state_result))
+                self.rate.sleep()
+            
+            #wait for the server to finish performing the action
+            movebase_client.wait_for_result()
+            rospy.loginfo("Location Reached! Success!")
+
+
 turtlebot_exploration = TurtlebotExploration()

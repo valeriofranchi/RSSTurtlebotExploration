@@ -1,0 +1,2 @@
+uint8 sign_id
+geometry_msgs/TransformStamped sign_pose

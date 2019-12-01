@@ -13,7 +13,7 @@ odom_frame:           odom
 map_update_interval:  5.0 
 
 # Unset maxUrange and maxRange and it will autodetect
-maxUrange:            6.0
+maxUrange:            3.5 #shorter usable range so it will need to get closer and see the signs better
 sigma:                0.05
 kernelSize:           1 
 lstep:                0.05
