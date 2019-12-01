@@ -1,4 +1,0 @@
-<launch>
-    <node pkg="potential_field" type="potential_field" name="turtlebot_avoidance" output="screen">
-    </node>
-</launch>
