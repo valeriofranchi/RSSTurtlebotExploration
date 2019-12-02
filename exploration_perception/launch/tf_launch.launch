@@ -1,4 +1,6 @@
 <launch>
-	<node pkg="exploration_perception" type="get_calib_images.py" name="tf_node" output="screen">
-	</node>
+	<!-- Launch mapping package launch file -->
+	<include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
+
+	<node pkg="exploration_perception" type="get_specific_tf.py" name="sign_node" output="screen"/>
 </launch>
