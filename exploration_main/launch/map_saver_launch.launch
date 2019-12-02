@@ -1,0 +1,6 @@
+<launch>
+    <arg name="map_file_name" default="map"/>
+    <node pkg="exploration_main" type="map_saver.cpp" name="map_saver" output="screen">
+        <param name="map_name" value="$(arg map_file_name)" type="str"/>
+    </node>
+</launch>

@@ -11,6 +11,7 @@ from std_msgs.msg import Header, ColorRGBA
 from exploration_perception.msg import DangerSign
 from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker
+import roslaunch
 
 PENDING = 0
 ACTIVE = 1
@@ -174,9 +175,6 @@ class TurtlebotExploration:
         while state_result < DONE:
             rospy.loginfo("Checking for danger signs while performing exploration....")
 
-            #self.exploration_client.cancel_goal()
-            #print("Cancelling goal...")
-
             #publish rviz marker for frontier 
             self.marker_pub.publish(frontier_marker)
 
@@ -239,9 +237,6 @@ class TurtlebotExploration:
             while state_result < DONE:
                 rospy.loginfo("Checking for danger signs while performing navigation....")
 
-                #self.exploration_client.cancel_goal()
-                #print("Cancelling goal...")
-
                 #publish rviz marker for goal
                 self.marker_pub.publish(goal_marker)
 
@@ -249,7 +244,7 @@ class TurtlebotExploration:
                     sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
                         header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
                     """PROBLEM ONE IS A POSE OTHER IS A TRANSFORM MESSAGE """
-                    sign_marker.pose = self.danger_sign.sign_pose.transform
+                    sign_marker.pose = self.danger_sign.sign_pose.pose
                     self.sign_detected = False
                 
                 #update state value and display it on the log 
@@ -263,3 +258,9 @@ class TurtlebotExploration:
 
 
 turtlebot_exploration = TurtlebotExploration()
+uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+roslaunch.configure_logging(uuid)
+launch = roslaunch.parent.ROSLaunchParent(uuid, ["/home/valeriofranchi/catkin_ws/src/exploration_main/launch/map_saver.launch"])
+launch.start()
+#make a check that the map file has appeared using os and if it has, stop the launch file 
+#launch.shutdown()

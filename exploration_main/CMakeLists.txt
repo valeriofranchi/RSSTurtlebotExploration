@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   exploration_perception
+  actionlib
 )
 
 ## System dependencies are found with CMake's conventions
@@ -135,7 +136,8 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(test src/test.cpp)
+add_executable(mainexp src/mainexp.cpp)
+#add_executable(map_saver src/map_saver.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -145,12 +147,16 @@ add_executable(test src/test.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(test ${test_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(mainexp ${mainexp_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(map_saver ${map_saver_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(test
+target_link_libraries(mainexp
   ${catkin_LIBRARIES}
 )
+#target_link_libraries(map_saver
+#  ${catkin_LIBRARIES}
+#)
 
 #############
 ## Install ##

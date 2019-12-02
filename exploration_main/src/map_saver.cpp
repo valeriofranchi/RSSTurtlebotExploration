@@ -132,7 +132,7 @@ free_thresh: 0.196
               "  map_saver -h\n"\
               "  map_saver [--occ <threshold_occupied>] [--free <threshold_free>] [-f <mapname>] [ROS remapping args]"
 
-int main(int argc, char** argv)
+/*int main(int argc, char** argv)
 {
   ros::init(argc, argv, "map_saver");
   std::string mapname = "map";
@@ -211,4 +211,4 @@ int main(int argc, char** argv)
     ros::spinOnce();
 
   return 0;
-}
+}*/
