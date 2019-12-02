@@ -106,7 +106,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES exploration_main
+#  LIBRARIES 
 #  CATKIN_DEPENDS rospy
 #  DEPENDS system_lib
 )
@@ -124,7 +124,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/exploration_main.cpp
+#   src/${PROJECT_NAME}/test.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -135,7 +135,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(cmain_exp src/cmain_exp.cpp)
+add_executable(test src/test.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -145,10 +145,10 @@ add_executable(cmain_exp src/cmain_exp.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(cmain_exp ${cmain_exp_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(test ${test_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(cmain_exp
+target_link_libraries(test
   ${catkin_LIBRARIES}
 )
 
@@ -192,7 +192,7 @@ target_link_libraries(cmain_exp
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_exploration_main.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_test_main.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
