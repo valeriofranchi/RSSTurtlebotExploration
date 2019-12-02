@@ -41,14 +41,21 @@ if __name__ == '__main__':
 
 			try:
 				#print "Trying to transform"
-				(trans,rot) = listener.lookupTransform(object_Frame,'/map',rospy.Time(0))
+				(trans,rot) = listener.lookupTransform('/map',object_Frame, rospy.Time(0))
 				#Convert i to object type
 				print "1"
-				object_Pose = exploration_perception.msg.DangerSign()
+				object_Pose = DangerSign()
 				print "2"
-				object_Pose.sign_pose.pose.position = trans
-				object_pose.sign_pose.pose.orientation = rot
+				object_Pose.sign_pose.pose.position.x = trans[0]
+				object_Pose.sign_pose.pose.position.y = trans[1]
+				object_Pose.sign_pose.pose.position.z = trans[2]
+				object_Pose.sign_pose.pose.orientation.x = rot[0]
+				object_Pose.sign_pose.pose.orientation.y = rot[1]
+				object_Pose.sign_pose.pose.orientation.z = rot[2]
+				object_Pose.sign_pose.pose.orientation.w = rot[3]
 				print "3"
+				print(object_Pose)
+				object_Pose.sign_id = 1
 				publisher.publish(object_Pose)
 				print object_Frame
 

@@ -16,8 +16,7 @@ obstacle_layer:
   combination_method:   1
   track_unknown_space:  true    #true needed for disabling global path planning through unknown space
   obstacle_range: 5.5
-  raytrace_range: 5.9
-  origin_z: 0.0
+  raytrace_range: 5.8
   #z_resolution: 0.2
   #z_voxels: 2
   publish_voxel_map: false
@@ -27,8 +26,8 @@ obstacle_layer:
 #cost_scaling_factor and inflation_radius were now moved to theinflation_layer ns
 inflation_layer:
   enabled:              true
-  cost_scaling_factor:  4.0  # exponential rate at which the obstacle cost drops off (default: 10)
-  inflation_radius:     0.5  # max. distance from an obstacle at which costs are incurred for planning paths.
+  cost_scaling_factor:  1.0  #5.0 exponential rate at which the obstacle cost drops off (default: 10)
+  inflation_radius:     0.05  #0.3 max. distance from an obstacle at which costs are incurred for planning paths.
 
 static_layer:
   enabled:              true
