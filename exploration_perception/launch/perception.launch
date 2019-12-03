@@ -5,7 +5,8 @@ script responsible for the perception side of the robot mission-->
 
     <arg name="gui"             default="true"/>
     <arg name="image_topic"     default="image"/>
-    <arg name="objects_path"    default="~/objects"/>
+    <!-- <arg name="objects_path"    default="~/objects"/> -->
+    <arg name="objects_path"    default="./..src/vision_data/objects"/>
     <arg name="object_prefix"   default="object"/>
     <arg name="settings_path"   default="~/ros/find_object_2d.ini"/>
     <arg name="subscribe_depth" default="true"/>
@@ -16,15 +17,15 @@ script responsible for the perception side of the robot mission-->
 	<arg name="depth_topic"       default="camera/depth_registered/image_raw"/>
 	<arg name="camera_info_topic" default="camera/rgb/camera_info"/>
 
-    <node name="find_object_2d" type="find_object_2d" pkg="find_object_2d">
+    <!-- <node name="find_object_2d" type="find_object_2d" pkg="find_object_2d">
         <param name="gui"             value="$(arg gui)" type="bool"/>
         <param name="objects_path"    value="$(arg objects_path)" type="str"/>
         <param name="settings_path"   value="$(arg settings_path)" type="str"/>
 		<param name="object_prefix" value="$(arg object_prefix)" type="str"/>
 
-        <remap from="image" to="$(arg image_topic)"/>
+        <remap from="image" to="$(arg image_topic)"/> -->
 
-    <!-- if want to find 3D poses of objects detected, remove node above and uncomment one below
+    <!-- if want to find 3D poses of objects detected, remove node above and uncomment one below -->
 
     <node name="find_object_3d" pkg="find_object_2d" type="find_object_2d" output="screen">
 	    <param name="gui" value="$(arg gui)" type="bool"/>
@@ -40,7 +41,7 @@ script responsible for the perception side of the robot mission-->
 	    <remap from="depth_registered/camera_info" to="$(arg camera_info_topic)"/>
 	</node>
 
-        -->
-    </node>
+       
+    <!-- </node> -->
 
 </launch>
