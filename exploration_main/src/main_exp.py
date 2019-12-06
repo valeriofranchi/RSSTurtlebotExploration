@@ -1,17 +1,21 @@
 #! /usr/bin/env python
 
-from math import pi, fabs
-import rospy
+import os 
+import time 
+from math import fabs, pi
 import actionlib
-from geometry_msgs.msg import Twist, Vector3, PoseStamped
-from geometry_msgs.msg import PolygonStamped, PointStamped, Point32, Point
+import roslaunch 
+import rospy
 from frontier_exploration.msg import ExploreTaskAction, ExploreTaskGoal
+from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import PointStamped, Point, Point32, PolygonStamped
+from geometry_msgs.msg import Vector3
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-from std_msgs.msg import Header, ColorRGBA
-from exploration_perception.msg import DangerSign
+from nav_msgs.msg import Odometry
+from std_msgs.msg import ColorRGBA, Header
 from tf.transformations import euler_from_quaternion
-from visualization_msgs.msg import Marker
-import roslaunch
+from visualization_msgs.msg import Marker, MarkerArray
+from exploration_perception.msg import DangerSign
 
 PENDING = 0
 ACTIVE = 1
@@ -25,8 +29,10 @@ class TurtlebotExploration:
         #Initializes node, publishers and subscribers 
         rospy.init_node('map_navigation')
         self.movement_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
-        self.marker_pub = rospy.Publisher('/rviz_marker', Marker, queue_size=1)
-        self.sign_sub = rospy.Subscriber('/danger_signs', DangerSign, self.sign_callback) #modify with correct type 
+        self.boundary_sub = rospy.Subscriber('/exploration_polygon_marker', Marker, self.boundary_callback)
+        self.sign_sub = rospy.Subscriber('/danger_signs', DangerSign, self.sign_callback) 
+        self.odom_sub = rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        self.marker_array_pub = rospy.Publisher("/visualization_marker_array", MarkerArray, queue_size=1)
         self.rate = rospy.Rate(20)
 
         #current robot pose coordinates updated by feedback callback function 
@@ -35,15 +41,17 @@ class TurtlebotExploration:
         self.y = 0.0
         self.yaw = 0.0
 
+        #odometry yaw orientation
+        self.odom_yaw = 0.0
+
         #current target frontier to explore 
-        self.frontier = PoseStamped()    
+        self.frontier = PoseStamped()   
+        self.boundary_marker = Marker() 
 
         #danger sign message and boolean describing if detection happened
         self.danger_sign = DangerSign()
         self.sign_detected = False
-
-        #start exploration
-        self.perform_exploration()
+        self.signs = MarkerArray()
     
     """
     This function initializes the explore_server action server and creates an action client object
@@ -92,6 +100,15 @@ class TurtlebotExploration:
     def sign_callback(self, data):
         self.danger_sign = data
         self.sign_detected = True
+    
+    """Subscriber to odom topic"""
+    def odom_callback(self, data):
+        orient = data.pose.pose.orientation
+        (_, _, self.odom_yaw) = euler_from_quaternion([orient.x, orient.y, orient.z, orient.w])
+
+    """Subscriber to exploration_boundary_polygon to show the exploration area defined"""
+    def boundary_callback(self, data):
+        self.boundary_marker = data
 
     """
     This function waits for at least for one subscriber to be active before publishing.
@@ -110,19 +127,21 @@ class TurtlebotExploration:
     """
     def rotate360(self):
         move = Twist()
-        initial_yaw = self.yaw
-        move.angular.z = 0.1
+        target = 360
+        target_in_radians = target * pi / 180
 
-        #check when the 360 sweep has been finished 
-        while True:
-            self.movement_pub.publish(move)
-            if (initial_yaw > 0.0 and self.yaw < 0.0) or (initial_yaw < 0.0 and self.yaw < initial_yaw):
-                self.yaw += 2*pi
-            difference = fabs(initial_yaw - self.yaw)
-            if difference > 2*pi:
+        #check when the 360 sweep has been finished
+        while not rospy.is_shutdown():
+            if self.odom_yaw < 0.0:
+                current_yaw = self.odom_yaw + 2*pi
+            else:
+                current_yaw = self.odom_yaw
+            speed = 0.5 * (target_in_radians - current_yaw)
+            if speed < 0.01:
                 break
-
-        #stop the robot rotation
+            move.angular.z = speed
+            self.movement_pub.publish(move)
+            self.rate.sleep()
         move.angular.z = 0.0
         self.publish_once(move)
 
@@ -163,6 +182,14 @@ class TurtlebotExploration:
             header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
         frontier_marker.pose = self.frontier
 
+        #create marker array and append the markers to display
+        marker_array = MarkerArray()
+        marker_array.markers.append(self.boundary_marker, frontier_marker)
+
+        #create the rviz marker for the signs 
+        sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
+            header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
+
         # Sends the goal to the action server.
         rospy.loginfo('Sending goal to action server: %s', goal)
         exploration_client.send_goal(goal, feedback_cb=self.exploration_feedback_cb)
@@ -175,15 +202,14 @@ class TurtlebotExploration:
         while state_result < DONE:
             rospy.loginfo("Checking for danger signs while performing exploration....")
 
-            #publish rviz marker for frontier 
-            self.marker_pub.publish(frontier_marker)
-
             if self.sign_detected:
-                sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
-                    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
-                """PROBLEM ONE IS A POSE OTHER IS A TRANSFORM MESSAGE """
-                sign_marker.pose = self.danger_sign.sign_pose.transform
+                sign_marker.pose = self.danger_sign.sign_pose.pose
+                self.signs.markers.append(sign_marker)
+                marker_array.markers.append(sign_marker)
                 self.sign_detected = False
+            
+            #publish rviz markers for boundary polygon, frontier, signs 
+            self.marker_array_pub.publish(marker_array)
                 
             #update state value and display it on the log 
             state_result = exploration_client.get_state()
@@ -209,6 +235,10 @@ class TurtlebotExploration:
         movebase_server = '/move_base'
         movebase_client = self.initialize_action_server(movebase_server, MoveBaseAction)  
 
+        #create marker array and add all signs to it 
+        marker_array = MarkerArray()
+        marker_array.markers.extend(self.signs.markers)        
+
         for location in locations:
             # Creates a goal to send to the action server.
             goal = MoveBaseGoal()
@@ -220,6 +250,13 @@ class TurtlebotExploration:
             goal_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.35, 0.35, 0.35),
             header=Header(frame_id='map'), color=ColorRGBA(0.0, 1.0, 0.0, 1.0))
             goal_marker.pose = location.pose
+
+            #add goal marker to marker array
+            marker_array.markers.append(goal_marker)
+
+            #create the rviz marker for the signs 
+            sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
+                header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
 
             # Sends the goal to the action server.
             rospy.loginfo('Sending goal to action server: %s', goal)
@@ -237,16 +274,14 @@ class TurtlebotExploration:
             while state_result < DONE:
                 rospy.loginfo("Checking for danger signs while performing navigation....")
 
-                #publish rviz marker for goal
-                self.marker_pub.publish(goal_marker)
-
                 if self.sign_detected:
-                    sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
-                        header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
-                    """PROBLEM ONE IS A POSE OTHER IS A TRANSFORM MESSAGE """
                     sign_marker.pose = self.danger_sign.sign_pose.pose
+                    marker_array.markers.append(sign_marker)
                     self.sign_detected = False
-                
+
+                #publish rviz marker for goal
+                self.marker_array_pub.publish(marker_array)
+
                 #update state value and display it on the log 
                 state_result = movebase_client.get_state()
                 rospy.loginfo("state_result: "+str(state_result))
@@ -256,11 +291,25 @@ class TurtlebotExploration:
             movebase_client.wait_for_result()
             rospy.loginfo("Location Reached! Success!")
 
-
+#create TurtlebotExploration object that initialises everything and start exploration
 turtlebot_exploration = TurtlebotExploration()
+turtlebot_exploration.perform_exploration()
+
+#save the map into a file
 uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
 roslaunch.configure_logging(uuid)
+#configure and execute the launch file 
 launch = roslaunch.parent.ROSLaunchParent(uuid, ["/home/valeriofranchi/catkin_ws/src/exploration_main/launch/map_saver.launch"])
 launch.start()
-#make a check that the map file has appeared using os and if it has, stop the launch file 
-#launch.shutdown()
+
+#define the map_saver generated file directories  
+map_name = rospy.get_param("~map_name")
+yaml_file_path = map_name + ".yaml"
+pgm_file_path = map_name + ".pgm"
+yaml_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", yaml_file_path)
+pgm_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", pgm_file_path)
+
+#if both files exist, wait for 3 seconds then stop the launch file 
+if os.path.exists(yaml_dir) and os.path.exists(pgm_dir):
+    time.sleep(3.0) 
+    launch.shutdown()

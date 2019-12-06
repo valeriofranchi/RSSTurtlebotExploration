@@ -19,6 +19,7 @@
 #include <visualization_msgs/Marker.h>
 #include <std_msgs/Header.h>
 #include <std_msgs/ColorRGBA.h>
+#include <visualization_msgs/MarkerArray.h>
 #include "exp.hpp"
 #include "map_saver.cpp"
 
@@ -26,13 +27,15 @@
 void TurtlebotExploration::initialisePublishers() 
 {
   velocityPublisher = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-  markerPublisher = nh.advertise<visualization_msgs::Marker>("/visualization_marker", 1);
+  markerArrayPublisher = nh.advertise<visualization_msgs::MarkerArray>("/visualization_marker_array", 1);
 }
 
 // function initialises the subscribers for the TurtlebotExploration Class
 void TurtlebotExploration::initialiseSubscribers() 
 {
   signSubscriber = nh.subscribe<exploration_perception::DangerSign>("/danger_signs", 1, &TurtlebotExploration::signCB, this);
+  odomSubscriber = nh.subscribe<nav_msgs::Odometry>("/odom", 1, &TurtlebotExploration::odomCB, this);
+  boundarySubscriber = nh.subscribe<visualization_msgs::Marker>("/exploration_polygon_marker", 1, &TurtlebotExploration::boundaryCB, this);
 }
 
 // definition of done callback. it is called once when the goal completes
@@ -82,6 +85,20 @@ void TurtlebotExploration::signCB(const exploration_perception::DangerSignConstP
   signDetected = true;
 }
 
+void TurtlebotExploration::odomCB(const nav_msgs::OdometryConstPtr& msg)
+{
+  tf::Quaternion q(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, 
+    msg->pose.pose.orientation.z, msg->pose.pose.orientation.z);
+  tf::Matrix3x3 m(q);
+  double roll, pitch;
+  m.getRPY(roll, pitch, odomYaw);
+}
+
+void TurtlebotExploration::boundaryCB(const visualization_msgs::MarkerConstPtr& msg)
+{
+  boundaryMarker = *msg;
+}
+
 void TurtlebotExploration::publishOnce(const geometry_msgs::Twist& vel) 
 {
   ros::Rate rate(20);
@@ -99,18 +116,25 @@ void TurtlebotExploration::publishOnce(const geometry_msgs::Twist& vel)
 void TurtlebotExploration::rotate360()
 {
   geometry_msgs::Twist move;
-  double init_yaw = yaw;
-  move.angular.z = 0.1;
+  int target = 360;
+  double target_rad = target * M_PI / 180;
+  ros::Rate rate(20);
 
   //check when 360 sweep has finished
-  while (1)
+  double currentYaw = 0.0;
+  double speed = 0.0;
+  while (ros::ok())
   {
-    velocityPublisher.publish(move);
-    if ((init_yaw > 0.0 && yaw < 0.0) || (init_yaw < 0.0 && yaw < init_yaw))
-      yaw += 2 * M_PI;
-    double difference = std::abs(init_yaw - yaw);
-    if (difference > 2 * M_PI) 
+    if (odomYaw < 0.0)
+      currentYaw = odomYaw + 2 * M_PI;
+    else
+      currentYaw = odomYaw;
+    speed = 0.5 * (target_rad - currentYaw);
+    if (speed < 0.01)
       break;
+    move.angular.z = speed;
+    velocityPublisher.publish(move);
+    rate.sleep();
   }
 
   //stop robot
@@ -168,7 +192,7 @@ void TurtlebotExploration::performExploration()
   goal.explore_boundary = polygonBoundary;
   goal.explore_center = centrePoint;
 
-  //create goal marker
+  //create frontier marker
   visualization_msgs::Marker frontierMarker;
   frontierMarker.type = visualization_msgs::Marker::CUBE;
   frontierMarker.action = visualization_msgs::Marker::ADD;
@@ -182,6 +206,11 @@ void TurtlebotExploration::performExploration()
   fcolour.r, fcolour.g, fcolour.b, fcolour.a = 1.0, 0.0, 0.0, 1.0;
   frontierMarker.color = fcolour;
   frontierMarker.pose = frontier;
+
+  //create marker array 
+  visualization_msgs::MarkerArray markerArray;
+  markerArray.markers.push_back(frontierMarker);
+  markerArray.markers.push_back(boundaryMarker);
 
   //create sign marker
   visualization_msgs::Marker signMarker;
@@ -212,14 +241,16 @@ void TurtlebotExploration::performExploration()
   {
     ROS_INFO("Checking for danger signs while performing navigation...");
 
-    //publish marker
-    markerPublisher.publish(frontierMarker);
-
     if (signDetected)
     {
       signMarker.pose = dangerSign.sign_pose.pose;
+      signs.markers.push_back(signMarker);
+      markerArray.markers.push_back(signMarker);
       signDetected = false;
     }
+
+    //publish marker
+    markerArrayPublisher.publish(markerArray);
     
     //update state value and display it on log
     stateResult = explorationClient.getState();
@@ -234,6 +265,14 @@ void TurtlebotExploration::performExploration()
 
 void TurtlebotExploration::checkLocations(const std::vector<geometry_msgs::PoseStamped>& locations)
 {
+  //create marker array and add all signs to it 
+  visualization_msgs::MarkerArray markerArray;
+  std::vector<visualization_msgs::Marker>::const_iterator iter;
+  for(iter = signs.markers.begin(); iter != signs.markers.end(); ++iter)
+  {
+    markerArray.markers.push_back(*iter);
+  }
+
   //initialize action server 
   typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
   MoveBaseClient mbClient("move_base", true);
@@ -269,6 +308,9 @@ void TurtlebotExploration::checkLocations(const std::vector<geometry_msgs::PoseS
     goalMarker.color = gColour;
     goalMarker.pose = (*constIter).pose;
 
+    //add goal marker to marker array
+    markerArray.markers.push_back(goalMarker);
+
     //create sign marker
     visualization_msgs::Marker signMarker;
     signMarker.type = visualization_msgs::Marker::CUBE;
@@ -298,15 +340,15 @@ void TurtlebotExploration::checkLocations(const std::vector<geometry_msgs::PoseS
     {
       ROS_INFO("Checking for danger signs while performing navigation...");
 
-      //publish marker
-      markerPublisher.publish(goalMarker);
-
       if (signDetected)
       {
         signMarker.pose = dangerSign.sign_pose.pose;
+        markerArray.markers.push_back(signMarker);
         signDetected = false;
       }
-      
+      //publish markers
+      markerArrayPublisher.publish(markerArray);
+
       //update state value and display it on log
       stateResult = mbClient.getState();
       ROS_INFO("[State Result]: %s", stateResult.toString().c_str());
@@ -325,7 +367,7 @@ int main(int argc, char** argv){
 
   //create TurtlebotExploration object and perform exploration 
   TurtlebotExploration turtlebotExp(&nodeHandle);
-  //turtlebotExp.performExploration();
+  turtlebotExp.performExploration();
 
   //save map
   std::string mapname = "map";

@@ -13,6 +13,10 @@ plugins:
 - {name: sensor,            type: "costmap_2d::ObstacleLayer"}
 - {name: inflation,         type: "costmap_2d::InflationLayer"}
 
+#static:
+#  map_topic: /map
+#  subscribe_to_updates: true
+
 explore_boundary:
   resize_to_boundary: false #when receiving polygonal boundary, it resizes parent costmap accordingly
   frontier_travel_point: middle #other options closest point to robot, middle point of frontier 

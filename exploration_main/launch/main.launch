@@ -16,9 +16,9 @@
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find exploration_main)/rviz/default.rviz"/>
 
     <!-- Launch main node -->
-    <!--arg name="map_file_name" default="map"/>
+    <arg name="map_file_name" default="map"/>
     <node pkg="exploration_main" type="main_exp.py" name="main_node" output="screen">
         <param name="map_name" value="$(arg map_file_name)" type="str"/>
-    </node-->
+    </node>
 
 </launch>
