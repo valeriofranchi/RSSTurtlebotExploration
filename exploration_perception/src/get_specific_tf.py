@@ -75,6 +75,7 @@ object_to_sign = {
 
 import rospy
 import tf
+import os
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
 from exploration_perception.msg import DangerSign
@@ -99,13 +100,11 @@ if __name__ == '__main__':
 
 	listener = tf.TransformListener()
 
-	
-
 	print "Starting loop"
 	
 	while not rospy.is_shutdown():
-		path = os.getcwd() + '/exploration_perception/src/vision_data/objects'
-
+		path = '/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/objects'
+        #Lazy fix
 		object_List_size = len(os.listdir(path))
 		object_Name = "/object_"
 

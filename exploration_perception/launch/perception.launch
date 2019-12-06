@@ -6,7 +6,7 @@ script responsible for the perception side of the robot mission-->
     <arg name="gui"             default="true"/>
     <arg name="image_topic"     default="image"/>
     <!-- <arg name="objects_path"    default="~/objects"/> -->
-    <arg name="objects_path"    default="./..src/vision_data/objects"/>
+    <arg name="objects_path"    default="/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/objects"/>
     <arg name="object_prefix"   default="object"/>
     <arg name="settings_path"   default="~/ros/find_object_2d.ini"/>
     <arg name="subscribe_depth" default="true"/>
