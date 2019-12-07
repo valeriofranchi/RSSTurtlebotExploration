@@ -5,7 +5,7 @@ script responsible for the perception side of the robot mission-->
 
     <!-- Launch mapping package launch file -->
 	<include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
-	<include file="$(find exploration_perception)/launch/tf_launch.launch"/>
+	<include file="$(find exploration_perception)/launch/globalconvertlaunch.launch"/>
 
     <!-- Paths are lazy fixed to be absolute for my directory -->
     <arg name="gui"             default="true"/>
