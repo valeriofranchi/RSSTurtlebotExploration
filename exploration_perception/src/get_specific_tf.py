@@ -73,72 +73,126 @@ object_to_sign = {
     57: 6
 }
 
+#Needed imports and message formats
 import rospy
 import tf
 import os
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
 from exploration_perception.msg import DangerSign
+from std_msgs.msg import Float32MultiArray
 
-listener = None
+#Initialise Transform listener
+#listener = None
 
-def tf_listener(data):
-	global transform
-	for transform in data.transforms:
-		print(transform)
-		if transform.child_frame_id[:6] == "object":
-			publisher.publish(transform)
+#Define Interrupt method for when data is recieved from topic
+def object_listener(data):
+    #Data array element zero and generate object name
+    object_index = data.data[0]
+    object_name = "/object_"
+    object_frame = object_name + str(object_index)
 
-# rospy.init_node("a_node")
+    #Attempt to lookup tranform 
+    try:
+        #Lookup transform of object to map (global cooridnates)
+        (trans,rot) = listener.lookupTransform('/map',object_frame, rospy.Time(0))
+
+        #Create empty message to send data
+        object_Pose = DangerSign()
+
+        #Add position info to message
+        object_Pose.sign_pose.pose.position.x = trans[0]
+        object_Pose.sign_pose.pose.position.y = trans[1]
+        object_Pose.sign_pose.pose.position.z = trans[2]
+
+        #Add rotation info to message
+        object_Pose.sign_pose.pose.orientation.x = rot[0]
+        object_Pose.sign_pose.pose.orientation.y = rot[1]
+        object_Pose.sign_pose.pose.orientation.z = rot[2]
+        object_Pose.sign_pose.pose.orientation.w = rot[3]
+
+        if object_index in object_to_sign:  #Lookup marker ID based from dictionary
+            object_Pose.sign_id = object_to_sign[object_index]
+        else:                               #If not in dictionary set it to default value 
+            object_Pose.sign_id = 99    
+
+        #Publish message
+        pub.publish(object_Pose)
+
+    except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        rospy.logwarn("Object not in frame")
+
+rospy.init_node("dangerSignsNode")
+listener = tf.TransformListener()
+sub = rospy.Subscriber("/objects", Float32MultiArray, object_listener)
+pub = rospy.Publisher("/danger_signs", TransformStamped, queue_size=1)
+rospy.spin()
+
+
+#First Method for getting TFs from message
+# def tf_listener(data):
+# 	global transform
+# 	for transform in data.transforms:
+# 		print(transform)
+# 		if transform.child_frame_id[:6] == "object":
+# 			publisher.publish(transform)
+
+
+
 # subscriber = rospy.Subscriber("/tf", TFMessage, tf_listener)
 # publisher = rospy.Publisher("/tf_signs", TransformStamped, queue_size=1)
 # rospy.spin()
-		
-if __name__ == '__main__':
-	rospy.init_node("sign_node")
-	publisher = rospy.Publisher("/danger_signs", DangerSign, queue_size=5)
 
-	listener = tf.TransformListener()
+#---------------------------------------------------------------------------
+#Second Method		
+# if __name__ == '__main__':
 
-	print "Starting loop"
+#     #Setup node, publisher and listener
+# 	rospy.init_node("sign_node")
+# 	publisher = rospy.Publisher("/danger_signs", DangerSign, queue_size=1)
+# 	listener = tf.TransformListener()
+
+# 	print "Starting loop"
 	
-	while not rospy.is_shutdown():
-		path = '/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/objects'
-        #Lazy fix
-		object_List_size = len(os.listdir(path))
-		object_Name = "/object_"
+#     #Infinite loop
+# 	while not rospy.is_shutdown():
+#         #Set path to where object are stored
+# 		path = '/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/objects' #This path should be relative not absolute
 
-		for i in range(object_List_size):
-			
-			object_Frame = object_Name + str(i)
-			# print object_Frame
+#         #Get number of object that currenly exist
+# 		object_list_size = len(os.listdir(path))
+# 		object_name = "/object_"        
 
-			try:
-				#print "Trying to transform"
-				(trans,rot) = listener.lookupTransform('/map',object_Frame, rospy.Time(0))
+#         #Check every object that currently exists
+# 		for i in range(object_list_size):
+#             object_frame = object_name + str(i)
+#             # #Attempt to lookup tranform 
+#             try:
+#                 #Lookup transform of object to map (global cooridnates)
+#                 (trans,rot) = listener.lookupTransform('/map',object_frame, rospy.Time(0))
 
-				print "1"
-				object_Pose = DangerSign()
-				print "Message Created"
-				object_Pose.sign_pose.pose.position.x = trans[0]
-				object_Pose.sign_pose.pose.position.y = trans[1]
-				object_Pose.sign_pose.pose.position.z = trans[2]
-				object_Pose.sign_pose.pose.orientation.x = rot[0]
-				object_Pose.sign_pose.pose.orientation.y = rot[1]
-				object_Pose.sign_pose.pose.orientation.z = rot[2]
-				object_Pose.sign_pose.pose.orientation.w = rot[3]
-				print "Transform data added to message"
-				print(object_Pose)
-				
-				if i in object_to_sign:
-					object_Pose.sign_id = object_to_sign[i]
-				else:
-					object_Pose.sign_id = -1
+#                 #Create empty message to send data
+#                 object_Pose = DangerSign()
 
-				publisher.publish(object_Pose)
-				print object_Frame
+#                 #Add position info to message
+#                 object_Pose.sign_pose.pose.position.x = trans[0]
+#                 object_Pose.sign_pose.pose.position.y = trans[1]
+#                 object_Pose.sign_pose.pose.position.z = trans[2]
 
-			except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-				# rospy.logwarn("Object not in frame")
-				continue
-	
+#                 #Add rotation info to message
+#                 object_Pose.sign_pose.pose.orientation.x = rot[0]
+#                 object_Pose.sign_pose.pose.orientation.y = rot[1]
+#                 object_Pose.sign_pose.pose.orientation.z = rot[2]
+#                 object_Pose.sign_pose.pose.orientation.w = rot[3]
+
+#                 if i in object_to_sign:  #Lookup marker ID based from dictionary
+#                     object_Pose.sign_id = object_to_sign[i]
+#                 else:                               #If not in dictionary set it to default value 
+#                     object_Pose.sign_id = 99    
+
+#                 #Publish message
+#                 pub.publish(object_Pose)
+
+#             except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+#                 # rospy.logwarn("Object not in frame")
+#                 continue
