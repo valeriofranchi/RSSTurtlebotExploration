@@ -1,5 +1,7 @@
 <launch>
-    <node name="decompress_image" pkg="image_transport" type="republish" output="screen"
+    <!--node name="decompress_image" pkg="image_transport" type="republish" output="screen"
         args="compressed in:=/simplified_image/compressed raw out:=/simplified_image/decompressed">
+    </node-->
+    <node pkg="exploration_perception" type="simplify.py" name="simplify_image_node" output="screen">
     </node>
 </launch>
