@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import rospy
 import cv2
 from sensor_msgs.msg import CompressedImage, Image
@@ -11,13 +13,11 @@ def image_callback(msg):
 		image = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
 		simplified_image = simplify(image)
 		imagedecomp_pub.publish(bridge.cv2_to_imgmsg(simplified_image))
-		#self.imagecomp_pub.publish(self.bridge.cv2_to_compressed_imgmsg(simplified_image))
 		
 	except CvBridgeError as e:
 		print(e)
 
 def simplify(image):
-	image = cv2.imread(image)
 	#resize image 
 	ratio = 500 / float(image.shape[0])
 	resized = cv2.resize(image, (int(ratio * image.shape[1]), 500))
@@ -54,10 +54,11 @@ def simplify(image):
 	r = np.tile(image[maxy_converted, :, 2], (maxy_converted, 1))
 	overlay = cv2.merge([b, g, r])
 	image[:maxy_converted, :] = overlay
+	#image[:maxy_converted, :] = zeros
 	return image
 
+rospy.init_node("simplify_image_node")
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
-#self.imagecomp_pub = rospy.Publisher("/simplified_image/compressed", CompressedImage)
 imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 bridge = CvBridge()
 
