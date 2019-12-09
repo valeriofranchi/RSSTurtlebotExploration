@@ -88,15 +88,19 @@ rospy.init_node("dangerSignsNode")
 listener = tf.TransformListener()
 
 #Define Interrupt method for when data is recieved from topic
-def object_listener(data):
+def object_listener(msg):
+
+    if len(msg.data) == 0:
+        return
+
     rospy.loginfo("Entered callback")
 
     #Data array element zero and generate object name
-    object_index = int(data.data[0])
-    object_name = "object_"
+    object_index = int(msg.data[0])
+    object_name = "/object_"
     object_frame = object_name + str(object_index)
     rospy.loginfo("About to enter try/catch")
-    
+
     #Attempt to lookup tranform 
     try:
         rospy.loginfo("Entered try")
@@ -134,9 +138,18 @@ def object_listener(data):
         rospy.loginfo("Publishing Message")
         pub.publish(object_Pose)
 
-    except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-        rospy.logwarn("Object not in frame")
-        rospy.logwarn(object_frame)
+    except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e :
+        rospy.logwarn(e.message)
+        rospy.logwarn("Object not in frame " + object_frame)
+
+        if object_index in object_to_sign:  #Lookup marker ID based from dictionary
+            #rospy.loginfo("Found Object in dictionary")
+            sign_id = object_to_sign[object_index]
+            rospy.loginfo("Sign: " + sign_to_name[sign_id])
+
+        else:                               #If not in dictionary set it to default value
+            #rospy.loginfo("Object not in dictionary") 
+            object_Pose.sign_id = 99 
 
 sub = rospy.Subscriber("/objects", Float32MultiArray, object_listener)
 pub = rospy.Publisher("/danger_signs", TransformStamped, queue_size=1)
