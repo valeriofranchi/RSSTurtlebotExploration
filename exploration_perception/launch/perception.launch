@@ -4,7 +4,7 @@ script responsible for the perception side of the robot mission-->
 <launch>
 
     <include file="$(find exploration_perception)/launch/globalconvertlaunch.launch"/>
-    <include file="$(find exploration_perception)/launch/republish_image.launch"/>
+    <!-- <include file="$(find exploration_perception)/launch/republish_image.launch"/> -->
     <arg name="gui"             default="true"/>
     <arg name="image_topic"     default="image"/>
     <!-- <arg name="objects_path"    default="~/objects"/> -->
@@ -15,8 +15,8 @@ script responsible for the perception side of the robot mission-->
     <arg name="approx_sync"     default="true"/>
 	<arg name="pnp"             default="true"/>
 
-    <!-- <arg name="rgb_topic"         default="camera/rgb/image_rect_color"/> -->
-    <arg name="rgb_topic"         default="/simplified_image/decompressed"/>
+    <arg name="rgb_topic"         default="camera/rgb/image_rect_color"/>
+    <!-- <arg name="rgb_topic"         default="simplified_image/decompressed"/> -->
 	<arg name="depth_topic"       default="camera/depth_registered/image_raw"/>
 	<arg name="camera_info_topic" default="camera/rgb/camera_info"/>
 
