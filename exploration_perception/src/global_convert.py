@@ -84,46 +84,60 @@ from std_msgs.msg import Float32MultiArray
 
 #Initialise Transform listener
 #listener = None
+rospy.init_node("dangerSignsNode")
+listener = tf.TransformListener()
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(data):
-    #Data array element zero and generate object name
-    object_index = data.data[0]
-    object_name = "/object_"
-    object_frame = object_name + str(object_index)
+    rospy.loginfo("Entered callback")
 
+    #Data array element zero and generate object name
+    object_index = int(data.data[0])
+    object_name = "object_"
+    object_frame = object_name + str(object_index)
+    rospy.loginfo("About to enter try/catch")
+    
     #Attempt to lookup tranform 
     try:
+        rospy.loginfo("Entered try")
+
         #Lookup transform of object to map (global cooridnates)
         (trans,rot) = listener.lookupTransform('/map',object_frame, rospy.Time(0))
+        rospy.loginfo("After lookup")
 
         #Create empty message to send data
         object_Pose = DangerSign()
+        rospy.loginfo("Created Message")
 
         #Add position info to message
         object_Pose.sign_pose.pose.position.x = trans[0]
         object_Pose.sign_pose.pose.position.y = trans[1]
         object_Pose.sign_pose.pose.position.z = trans[2]
+        rospy.loginfo("Assigned linear positions")
 
         #Add rotation info to message
         object_Pose.sign_pose.pose.orientation.x = rot[0]
         object_Pose.sign_pose.pose.orientation.y = rot[1]
         object_Pose.sign_pose.pose.orientation.z = rot[2]
         object_Pose.sign_pose.pose.orientation.w = rot[3]
+        rospy.loginfo("Assigned angular positions")
 
         if object_index in object_to_sign:  #Lookup marker ID based from dictionary
+            rospy.loginfo("Found Object in dictionary")
             object_Pose.sign_id = object_to_sign[object_index]
-        else:                               #If not in dictionary set it to default value 
+
+        else:                               #If not in dictionary set it to default value
+            rospy.loginfo("Object not in dictionary") 
             object_Pose.sign_id = 99    
 
         #Publish message
+        rospy.loginfo("Publishing Message")
         pub.publish(object_Pose)
 
     except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
         rospy.logwarn("Object not in frame")
+        rospy.logwarn(object_frame)
 
-rospy.init_node("dangerSignsNode")
-listener = tf.TransformListener()
 sub = rospy.Subscriber("/objects", Float32MultiArray, object_listener)
 pub = rospy.Publisher("/danger_signs", TransformStamped, queue_size=1)
 rospy.spin()
