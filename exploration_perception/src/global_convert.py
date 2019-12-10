@@ -86,9 +86,12 @@ from std_msgs.msg import Float32MultiArray
 #listener = None
 rospy.init_node("dangerSignsNode")
 listener = tf.TransformListener()
+seq = 0
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
+
+    global seq
     rospy.loginfo("Entered callback")
     if len(msg.data) == 0:
         return
@@ -115,14 +118,14 @@ def object_listener(msg):
         object_Pose.sign_pose.pose.position.x = trans[0]
         object_Pose.sign_pose.pose.position.y = trans[1]
         object_Pose.sign_pose.pose.position.z = trans[2]
-        rospy.loginfo("Assigned linear positions")
+        rospy.loginfo("Assigned linear positions: ")
 
         #Add rotation info to message
         object_Pose.sign_pose.pose.orientation.x = rot[0]
         object_Pose.sign_pose.pose.orientation.y = rot[1]
         object_Pose.sign_pose.pose.orientation.z = rot[2]
         object_Pose.sign_pose.pose.orientation.w = rot[3]
-        rospy.loginfo("Assigned angular positions")
+        rospy.loginfo("Assigned angular positions: ")
 
         if object_index in object_to_sign:  #Lookup marker ID based from dictionary
             rospy.loginfo("Found Object in dictionary")
@@ -131,6 +134,9 @@ def object_listener(msg):
         else:                               #If not in dictionary set it to default value
             rospy.loginfo("Object not in dictionary") 
             object_Pose.sign_id = 99    
+
+        object_Pose.sign_pose.header.seq = seq
+        seq = seq + 1
 
         #Publish message
         rospy.loginfo("Publishing Message")

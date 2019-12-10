@@ -15,7 +15,7 @@ def image_sub(data):
 
     		#check if key corresponds to esc (quit), if yes quit the video capture
     		if key == ord('q'):
-        		cv2.imwrite("/home/valeriofranchi/catkin_ws/src/exploration_perception/calibration/image{}.png".format(i), cv_image)
+        		cv2.imwrite("/home/craig_ros/Pictures/test/image{}.png".format(i), cv_image)
 			i += 1			
 	except CvBridgeError as e:
 		print(e)

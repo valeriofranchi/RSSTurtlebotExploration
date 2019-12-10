@@ -8,6 +8,8 @@ from cv_bridge  import CvBridge, CvBridgeError
 import roslaunch
 import os
 
+thresholded = []
+
 def simplified_callback(msg):
 	rospy.loginfo("SIMPLIFIED\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
 		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
@@ -28,7 +30,7 @@ def image_callback(msg):
 		image_message.header.stamp = rospy.Time.now()
 		image_message.header.frame_id = "camera_rgb_optical_frame"
 		imagedecomp_pub.publish(image_message)
-		
+		#thresh_pub.publish(thresholded)
 	except CvBridgeError as e:
 		print(e)
 
@@ -47,29 +49,31 @@ def simplify(image):
 	#find non zero pixels and then positions in matrix of these pixels 
 	non_zero_y = np.nonzero(output)[0]
 	#find max y value of these positions 
-	maxy = np.min(non_zero_y)
-	"""
-	#convert to all values above maxy to black in image 
-	#for resized one (for displaying and debugging purposes)
-	b = np.tile(resized[maxy, :, 0], (maxy, 1))
-	g = np.tile(resized[maxy, :, 1], (maxy, 1))
-	r = np.tile(resized[maxy, :, 2], (maxy, 1))
-	overlay = cv2.merge([b, g, r])
-	zeros = np.zeros((image[:maxy_converted, :].shape), np.uint8)
-	resized[:maxy, :, :] = overlay
-	zeros = np.zeros((resized[:maxy, :].shape), np.uint8)
-	resized[:maxy, :] = zeros
-	"""
-	#convert maxy for original size image and make every pixel above it black
-	maxy_converted = int((maxy / float(resized.shape[0])) * image.shape[0]) 
-	overlay = np.array(image[maxy_converted, :] * maxy_converted)
-	#zeros = np.zeros((image[:maxy_converted, :].shape), np.uint8)
-	b = np.tile(image[maxy_converted, :, 0], (maxy_converted, 1))
-	g = np.tile(image[maxy_converted, :, 1], (maxy_converted, 1))
-	r = np.tile(image[maxy_converted, :, 2], (maxy_converted, 1))
-	overlay = cv2.merge([b, g, r])
-	image[:maxy_converted, :] = overlay
-	#image[:maxy_converted, :] = zeros
+	if len(non_zero_y) > 0:
+		maxy = np.min(non_zero_y)
+		"""
+		#convert to all values above maxy to black in image 
+		#for resized one (for displaying and debugging purposes)
+		b = np.tile(resized[maxy, :, 0], (maxy, 1))
+		g = np.tile(resized[maxy, :, 1], (maxy, 1))
+		r = np.tile(resized[maxy, :, 2], (maxy, 1))
+		overlay = cv2.merge([b, g, r])
+		zeros = np.zeros((image[:maxy_converted, :].shape), np.uint8)
+		resized[:maxy, :, :] = overlay
+		zeros = np.zeros((resized[:maxy, :].shape), np.uint8)
+		resized[:maxy, :] = zeros
+		"""
+		#convert maxy for original size image and make every pixel above it black
+		maxy_converted = int((maxy / float(resized.shape[0])) * image.shape[0]) 
+		if maxy_converted - 30 > 0:
+			overlay = np.array(image[maxy_converted-30, :] * maxy_converted-30)
+			#zeros = np.zeros((image[:maxy_converted, :].shape), np.uint8)
+			b = np.tile(image[maxy_converted-30, :, 0], (maxy_converted-30, 1))
+			g = np.tile(image[maxy_converted-30, :, 1], (maxy_converted-30, 1))
+			r = np.tile(image[maxy_converted-5, :, 2], (maxy_converted-30, 1))
+			overlay = cv2.merge([b, g, r])
+			image[:maxy_converted - 30, :] = overlay
+			#image[:maxy_converted, :] = zeros"""
 	return image
 
 rospy.init_node("simplify_image_node")
@@ -78,6 +82,7 @@ depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_
 simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
 original_sub = rospy.Subscriber("/camera/rgb/image_rect_color", Image, original_callback)
 imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
+#thresh_pub = rospy.Publisher("/thresholded_image",Image, queue_size=1)
 bridge = CvBridge()
 
 #simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/c6.JPG")
