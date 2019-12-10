@@ -16,9 +16,11 @@ def depth_callback(msg):
 	rospy.loginfo("DEPTH\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
 		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
 
-def image_callback(msg):
+def original_callback(msg):
 	rospy.loginfo("RAW\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
 		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+
+def image_callback(msg):
 	try:
 		image = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
 		simplified_image = simplify(image)
@@ -74,6 +76,7 @@ rospy.init_node("simplify_image_node")
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
 depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_callback)
 simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
+original_sub = rospy.Subscriber("/camera/rgb/image_rect_color", Image, original_callback)
 imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 bridge = CvBridge()
 
