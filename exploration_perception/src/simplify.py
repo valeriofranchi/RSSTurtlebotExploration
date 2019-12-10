@@ -8,8 +8,6 @@ from cv_bridge  import CvBridge, CvBridgeError
 import roslaunch
 import os
 
-thresholded = []
-
 def simplified_callback(msg):
 	rospy.loginfo("SIMPLIFIED\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
 		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
@@ -30,22 +28,34 @@ def image_callback(msg):
 		image_message.header.stamp = rospy.Time.now()
 		image_message.header.frame_id = "camera_rgb_optical_frame"
 		imagedecomp_pub.publish(image_message)
-		#thresh_pub.publish(thresholded)
 	except CvBridgeError as e:
 		print(e)
 
 def simplify(image):
+	image = cv2.imread(image) 
 	#resize image 
 	ratio = 500 / float(image.shape[0])
 	resized = cv2.resize(image, (int(ratio * image.shape[1]), 500))
+	cutoff_point = resized.shape[0] // 8
+	cutoff = np.zeros((cutoff_point, resized.shape[1], 3), np.uint8)
+	resized[:cutoff_point, :] = cutoff
 	#convert to hsv 
 	hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
+	h, s, v = cv2.split(hsv)
+	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+	s = clahe.apply(s)
+	v = clahe.apply(v)
+	hsv = cv2.merge([h, s, v])
 	#create bounds, apply inRange function 
-	cardboard_lower, cardboard_upper = (13, 97, 49), (18, 154, 199)
+	cardboard_lower, cardboard_upper = (0, 0, 0), (179, 116, 133)
 	cardboard_mask = cv2.inRange(hsv, cardboard_lower, cardboard_upper)
 	#apply opening operation to remove blobs and bitwise AND it with resized image 
-	opened = cv2.morphologyEx(cardboard_mask, cv2.MORPH_OPEN, (7, 7), iterations=4)
+	kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
+	opened = cv2.morphologyEx(cardboard_mask, cv2.MORPH_OPEN, kernel, iterations=6)
 	output = cv2.bitwise_and(resized, resized, mask=opened)
+	cv2.imshow("output", output)
+	cv2.waitKey(0)
+	cv2.destroyAllWindows()
 	#find non zero pixels and then positions in matrix of these pixels 
 	non_zero_y = np.nonzero(output)[0]
 	#find max y value of these positions 
@@ -76,7 +86,7 @@ def simplify(image):
 			#image[:maxy_converted, :] = zeros"""
 	return image
 
-rospy.init_node("simplify_image_node")
+#rospy.init_node("simplify_image_node")
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
 depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_callback)
 simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
@@ -85,7 +95,7 @@ imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue
 #thresh_pub = rospy.Publisher("/thresholded_image",Image, queue_size=1)
 bridge = CvBridge()
 
-#simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/c6.JPG")
+simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/image0.png")
 
 """
 uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
@@ -98,5 +108,5 @@ launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_path])
 launch.start()
 """
 
-rospy.spin()
+#rospy.spin()
 
