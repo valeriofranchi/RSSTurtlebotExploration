@@ -81,12 +81,34 @@ from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
 from exploration_perception.msg import DangerSign
 from std_msgs.msg import Float32MultiArray
+from sensor_msgs.msg import Image
+import cv2
+from cv_bridge import CvBridge
+import numpy as np
 
 #Initialise Transform listener
 #listener = None
 rospy.init_node("dangerSignsNode")
 listener = tf.TransformListener()
 seq = 0
+image_msg = None
+# Determine whether a workeris dead or alive
+def determine_worker(image_message, width, height, homography_matrix):
+	print("Checking worker! {},{}, len(mat):{}".format(width, height, len(homography_matrix)))
+	bridge = CvBridge()
+	cv_img = bridge.imgmsg_to_cv2(image_message, "bgr8")
+	h = np.matrix([[homography_matrix[0], homography_matrix[1], homography_matrix[2]],
+                   [homography_matrix[3], homography_matrix[4], homography_matrix[5]],
+                   [homography_matrix[6], homography_matrix[7], homography_matrix[8]]]).T
+	in_points = np.array([[[0, 0], [width, 0], [0, height], [width, height]]])
+	out_points = cv2.perspectiveTransform(in_points, h)[0]
+	rospy.logwarn("POINTS\n"+str(out_points))
+	rospy.logwarn("MATRIX\n"+str(h))
+	rospy.logwarn("OUT SHAPE: "+str(out_points.shape))
+	x, y = list(out_points[0])
+	cv_img_cropped = cv_img[y:y+int(height), x:x+int(width)]
+	cv2.imshow("sign", cv_img_cropped)
+	cv2.waitKey(0)
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
@@ -129,7 +151,18 @@ def object_listener(msg):
 
         if object_index in object_to_sign:  #Lookup marker ID based from dictionary
             rospy.logdebug("Found Object in dictionary")
+            # Check for worker
+            if object_to_sign[object_index] == 6:
+                global image_msg
+                if image_msg is None:
+                    rospy.logerr("Worker detected but image not stored yet")
+                else:
+                    width = msg.data[1]
+                    height = msg.data[2]
+                    homography_matrix = msg.data[3:12]
+                    determine_worker(image_msg, width, height, homography_matrix)
             object_Pose.sign_id = object_to_sign[object_index]
+
 
         else:                               #If not in dictionary set it to default value
             rospy.logdebug("Object not in dictionary") 
@@ -149,7 +182,12 @@ def object_listener(msg):
         if object_index in object_to_sign:  #Lookup marker ID based from dictionary
             rospy.logwarn("Sign: " + sign_to_name[object_to_sign[object_index]])
 
+def image_storage_listener(msg):
+    global image_msg
+    image_msg = msg
+
 sub = rospy.Subscriber("/objects", Float32MultiArray, object_listener)
+image_sub = rospy.Subscriber("/simplified_image/decompressed", Image, image_storage_listener)
 pub = rospy.Publisher("/danger_signs", DangerSign, queue_size=1)
 rospy.spin()
 

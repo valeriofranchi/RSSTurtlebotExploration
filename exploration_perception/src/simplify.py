@@ -32,7 +32,7 @@ def image_callback(msg):
 		print(e)
 
 def simplify(image):
-	image = cv2.imread(image) 
+	#image = cv2.imread(image) 
 	#resize image 
 	ratio = 500 / float(image.shape[0])
 	resized = cv2.resize(image, (int(ratio * image.shape[1]), 500))
@@ -53,9 +53,9 @@ def simplify(image):
 	kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
 	opened = cv2.morphologyEx(cardboard_mask, cv2.MORPH_OPEN, kernel, iterations=6)
 	output = cv2.bitwise_and(resized, resized, mask=opened)
-	cv2.imshow("output", output)
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
+	#cv2.imshow("output", output)
+	#cv2.waitKey(0)
+	#cv2.destroyAllWindows()
 	#find non zero pixels and then positions in matrix of these pixels 
 	non_zero_y = np.nonzero(output)[0]
 	#find max y value of these positions 
@@ -86,7 +86,7 @@ def simplify(image):
 			#image[:maxy_converted, :] = zeros"""
 	return image
 
-#rospy.init_node("simplify_image_node")
+rospy.init_node("simplify_image_node")
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
 depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_callback)
 simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
@@ -95,7 +95,7 @@ imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue
 #thresh_pub = rospy.Publisher("/thresholded_image",Image, queue_size=1)
 bridge = CvBridge()
 
-simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/image0.png")
+#simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/image0.png")
 
 """
 uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
@@ -108,5 +108,5 @@ launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_path])
 launch.start()
 """
 
-#rospy.spin()
+rospy.spin()
 
