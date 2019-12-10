@@ -92,7 +92,7 @@ seq = 0
 def object_listener(msg):
 
     global seq
-    rospy.loginfo("Entered callback")
+    rospy.logdebug("Entered callback")
     if len(msg.data) == 0:
         return
 
@@ -100,46 +100,46 @@ def object_listener(msg):
     object_index = int(msg.data[0])
     object_name = "object_"
     object_frame = object_name + str(object_index)
-    rospy.loginfo("About to enter try/catch")
+    rospy.logdebug("About to enter try/catch")
     
     #Attempt to lookup tranform 
     try:
-        rospy.loginfo("Entered try")
+        rospy.logdebug("Entered try")
 
         #Lookup transform of object to map (global cooridnates)
         (trans,rot) = listener.lookupTransform('odom',object_frame, rospy.Time(0))
-        rospy.loginfo("After lookup")
+        rospy.logdebug("After lookup")
 
         #Create empty message to send data
         object_Pose = DangerSign()
-        rospy.loginfo("Created Message")
+        rospy.logdebug("Created Message")
 
         #Add position info to message
         object_Pose.sign_pose.pose.position.x = trans[0]
         object_Pose.sign_pose.pose.position.y = trans[1]
         object_Pose.sign_pose.pose.position.z = trans[2]
-        rospy.loginfo("Assigned linear positions: ")
+        rospy.logdebug("Assigned linear positions: ")
 
         #Add rotation info to message
         object_Pose.sign_pose.pose.orientation.x = rot[0]
         object_Pose.sign_pose.pose.orientation.y = rot[1]
         object_Pose.sign_pose.pose.orientation.z = rot[2]
         object_Pose.sign_pose.pose.orientation.w = rot[3]
-        rospy.loginfo("Assigned angular positions: ")
+        rospy.logdebug("Assigned angular positions: ")
 
         if object_index in object_to_sign:  #Lookup marker ID based from dictionary
-            rospy.loginfo("Found Object in dictionary")
+            rospy.logdebug("Found Object in dictionary")
             object_Pose.sign_id = object_to_sign[object_index]
 
         else:                               #If not in dictionary set it to default value
-            rospy.loginfo("Object not in dictionary") 
+            rospy.logdebug("Object not in dictionary") 
             object_Pose.sign_id = 99    
 
         object_Pose.sign_pose.header.seq = seq
         seq = seq + 1
 
         #Publish message
-        rospy.loginfo("Publishing Message")
+        rospy.logdebug("Publishing Message")
         pub.publish(object_Pose)
 
     except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:

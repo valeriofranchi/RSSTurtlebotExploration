@@ -5,13 +5,12 @@ script responsible for the perception side of the robot mission-->
 
     <include file="$(find exploration_perception)/launch/globalconvertlaunch.launch"/>
     <include file="$(find exploration_perception)/launch/republish_image.launch"/>
-    
+
     <arg name="gui"             default="true"/>
     <arg name="image_topic"     default="image"/>
-    <!-- <arg name="objects_path"    default="~/objects"/> -->
-    <arg name="objects_path"    default="/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/objects"/>
+    <arg name="objects_path"    default="$(find exploration_perception)/src/vision_data/objects"/>
     <arg name="object_prefix"   default="object"/>
-    <arg name="settings_path"   default="/home/craig_ros/catkin_ws/src/rssp/exploration_perception/src/vision_data/settings/Settings.ini"/>
+    <arg name="settings_path"   default="$(find exploration_perception)/src/vision_data/settings/Settings.ini"/>
     <arg name="subscribe_depth" default="true"/>
     <arg name="approx_sync"     default="true"/>
 	<arg name="pnp"             default="true"/>
