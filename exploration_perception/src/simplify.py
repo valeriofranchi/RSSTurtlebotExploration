@@ -8,11 +8,24 @@ from cv_bridge  import CvBridge, CvBridgeError
 import roslaunch
 import os
 
+def simplified_callback(msg):
+	rospy.loginfo("SIMPLIFIED\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+
+def depth_callback(msg):
+	rospy.loginfo("DEPTH\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+
 def image_callback(msg):
+	rospy.loginfo("RAW\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
 	try:
 		image = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
 		simplified_image = simplify(image)
-		imagedecomp_pub.publish(bridge.cv2_to_imgmsg(simplified_image))
+		image_message = bridge.cv2_to_imgmsg(simplified_image, "bgr8")
+		image_message.header.stamp = rospy.Time.now()
+		image_message.header.frame_id = "camera_rgb_optical_frame"
+		imagedecomp_pub.publish(image_message)
 		
 	except CvBridgeError as e:
 		print(e)
@@ -59,6 +72,8 @@ def simplify(image):
 
 rospy.init_node("simplify_image_node")
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
+depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_callback)
+simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
 imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 bridge = CvBridge()
 
