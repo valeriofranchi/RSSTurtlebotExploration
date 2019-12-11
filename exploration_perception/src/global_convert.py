@@ -107,25 +107,34 @@ def determine_worker(image_message, width, height, homography_matrix):
 	rospy.logwarn("MATRIX\n"+str(h))
 	rospy.logwarn("OUT SHAPE: "+str(out_points.shape))
 	x, y = list(out_points[0])
-	cv_img_cropped = cv_img[y:y+int(height), x:x+int(width)]
+	cv_sign_img = cv_img[y:y+int(height), x:x+int(width)]
+	# CLAHE
+	cv_sign_hsv = cv2.cvtColor(cv_sign_img, cv2.COLOR_BGR2HSV)
+	h, s, v = cv2.split(cv_sign_hsv)
+	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+	v = clahe.apply(v)
+	cv_sign_hsv = cv2.merge([h, s, v])
+	cv_sign_img = cv2.cvtColor(cv_sign_hsv, cv2.COLOR_HSV2BGR)
 	# Create histograms
 	# Colour space ranges
-	colour_space_ranges = [180, 256, 256]   # HSV
+	colour_space_ranges = [256, 256, 256]# [180, 256, 256]   # HSV
 	bin_divider = 10
 	bin_counts = [num // bin_divider for num in colour_space_ranges]
 	ch1, ch2, ch3 = cv2.split(cv_sign_img)  # Separate channels
 	hist1 = cv2.calcHist([ch1], [0], None, [bin_counts[0]], [0, colour_space_ranges[0]])
 	hist2 = cv2.calcHist([ch2], [0], None, [bin_counts[1]], [0, colour_space_ranges[1]])
 	hist3 = cv2.calcHist([ch3], [0], None, [bin_counts[2]], [0, colour_space_ranges[2]])
-	cv2.normalise(hist1, hist1)
-	cv2.normalise(hist2, hist2)
-	cv2.normalise(hist3, hist3)
-	print("CHANNEL 1")
-	print(hist1)
-	print("CHANNEL 2")
-	print(hist2)
-	print("CHANNEL 3")
-	print(hist3)
+	cv2.normalize(hist1, hist1)
+	cv2.normalize(hist2, hist2)
+	cv2.normalize(hist3, hist3)
+	# TODO - REMOVE WAITS AND DISPLAYS
+	cv2.imshow("sign", cv_sign_img)
+	cv2.waitKey(0)
+	g_sum = sum([i * hist2[i] for i in range(len(hist2))])
+	r_sum = sum([i * hist3[i] for i in range(len(hist3))])
+	result = "green" if g_sum>r_sum else "red"
+	display_hists([hist1, hist2, hist3], name+": "+result)
+	cv2.destroyAllWindows()
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
