@@ -94,6 +94,7 @@ seq = 0
 image_msg = None
 # Determine whether a workeris dead or alive
 def determine_worker(image_message, width, height, homography_matrix):
+	# Get cropped cv image
 	print("Checking worker! {},{}, len(mat):{}".format(width, height, len(homography_matrix)))
 	bridge = CvBridge()
 	cv_img = bridge.imgmsg_to_cv2(image_message, "bgr8")
@@ -107,8 +108,24 @@ def determine_worker(image_message, width, height, homography_matrix):
 	rospy.logwarn("OUT SHAPE: "+str(out_points.shape))
 	x, y = list(out_points[0])
 	cv_img_cropped = cv_img[y:y+int(height), x:x+int(width)]
-	cv2.imshow("sign", cv_img_cropped)
-	cv2.waitKey(0)
+	# Create histograms
+	# Colour space ranges
+	colour_space_ranges = [180, 256, 256]   # HSV
+	bin_divider = 10
+	bin_counts = [num // bin_divider for num in colour_space_ranges]
+	ch1, ch2, ch3 = cv2.split(cv_sign_img)  # Separate channels
+	hist1 = cv2.calcHist([ch1], [0], None, [bin_counts[0]], [0, colour_space_ranges[0]])
+	hist2 = cv2.calcHist([ch2], [0], None, [bin_counts[1]], [0, colour_space_ranges[1]])
+	hist3 = cv2.calcHist([ch3], [0], None, [bin_counts[2]], [0, colour_space_ranges[2]])
+	cv2.normalise(hist1, hist1)
+	cv2.normalise(hist2, hist2)
+	cv2.normalise(hist3, hist3)
+	print("CHANNEL 1")
+	print(hist1)
+	print("CHANNEL 2")
+	print(hist2)
+	print("CHANNEL 3")
+	print(hist3)
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
