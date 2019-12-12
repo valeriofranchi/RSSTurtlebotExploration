@@ -1,2 +1,2 @@
-uint8 sign_id
+std_msgs/String sign_name
 geometry_msgs/PoseStamped sign_pose

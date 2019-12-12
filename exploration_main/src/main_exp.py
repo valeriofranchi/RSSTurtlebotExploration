@@ -12,6 +12,7 @@ from nav_msgs.msg import Odometry, MapMetaData, OccupancyGrid
 from std_msgs.msg import ColorRGBA, Header
 from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker, MarkerArray
+import subprocess
 #from exploration_perception.msg import DangerSign
 
 PENDING = 0
@@ -318,23 +319,6 @@ class TurtlebotExploration:
 #create TurtlebotExploration object that initialises everything and start exploration
 turtlebot_exploration = TurtlebotExploration()
 turtlebot_exploration.perform_exploration()
-"""
-#save the map into a file
-uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-roslaunch.configure_logging(uuid)
-#configure and execute the launch file 
-launch = roslaunch.parent.ROSLaunchParent(uuid, ["/home/valeriofranchi/catkin_ws/src/exploration_main/launch/map_saver.launch"])
-launch.start()
 
-#define the map_saver generated file directories  
-map_name = rospy.get_param("~map_name")
-yaml_file_path = map_name + ".yaml"
-pgm_file_path = map_name + ".pgm"
-yaml_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", yaml_file_path)
-pgm_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", pgm_file_path)
-
-#if both files exist, wait for 3 seconds then stop the launch file 
-if os.path.exists(yaml_dir) and os.path.exists(pgm_dir):
-    time.sleep(3.0) 
-    launch.shutdown()
-"""
+#launch the map saver node 
+subprocess.call("./map_saver.sh")

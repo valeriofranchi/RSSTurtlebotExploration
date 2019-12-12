@@ -3,6 +3,7 @@ import os
 import time
 import random
 from math import fabs, pi
+import tf
 import actionlib
 import roslaunch 
 import rospy
@@ -13,6 +14,7 @@ from nav_msgs.msg import Odometry, MapMetaData, OccupancyGrid
 from std_msgs.msg import ColorRGBA, Header
 from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker, MarkerArray
+import subprocess
 #from exploration_perception.msg import DangerSign
 
 PENDING = 0
@@ -53,17 +55,6 @@ class TurtlebotExploration:
         rospy.loginfo('Action Server Found...' + action_server_name)
         #return SimpleActionClient
         return client
-
-    """
-    This function will be called when feedback is received from the move base action server.
-    It prints the current location of the robot based in the form of its x,y and yaw coordinates.
-    """
-    def movebase_feedback_cb(self, feedback):
-        self.x = feedback.base_position.pose.position.x
-        self.y = feedback.base_position.pose.position.y
-        c_or = feedback.base_position.pose.orientation
-        (_, _, self.yaw) = euler_from_quaternion([c_or.x, c_or.y, c_or.z, c_or.w])
-        rospy.loginfo("Feedback received\nRobot Position: x: {}, y: {}, yaw: {}".format(self.x, self.y, self.yaw))
     
     """
     Subscriber to the '/danger_signs' topic; when a sign is detected it stores the DangerSign object and assigns the 
@@ -73,13 +64,15 @@ class TurtlebotExploration:
     #    self.danger_sign = msg
     #    self.sign_detected = True
 
-
     """
     This function performs the turtlebot exploration of the unknown environment until no next frontier to explore is found.
     """
     def perform_exploration(self):
-        rospy.loginfo("Calling exploration server and initialising action client...")
+        #rospy.loginfo("Waiting for find_object_2d node to load...")
+        #rospy.sleep(20)
+
         #initialise action server and SimpleActionClient 
+        rospy.loginfo("Calling exploration server and initialising action client...")
         exploration_server = '/exploration_server'
         exploration_client = self.initialize_action_server(exploration_server, ExplorationAction)  
 
@@ -88,35 +81,47 @@ class TurtlebotExploration:
         goal = ExplorationGoal()
 
         #create the rviz marker for the signs 
-        #sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
+        #sign_marker = Marker(type=Marker.TEXT_VIEW_FACING, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
         #    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
 
         # Sends the goal to the action server.
         rospy.loginfo('Sending goal to action server: %s', goal)
         exploration_client.send_goal(goal)
 
-        marker_array = MarkerArray()
-
         # state_result will give the FINAL STATE. Will be 1 when Active, and 2 if NO ERROR, 3 If Any Warning, and 3 if ERROR
         state_result = exploration_client.get_state()
 
         rospy.loginfo("state_result: "+str(state_result))
 
+        #listener = tf.TransformListener()
+        #object_pose = Pose()
+
         while state_result < DONE:
-            #rospy.loginfo("Checking for danger signs while performing exploration....")
+            rospy.loginfo("Checking for DEAD PEOPLE while performing exploration....")
 
             #if self.sign_detected:
             #    sign_marker.pose = self.danger_sign.sign_pose.pose
+            #    sign_marker.text = self.danger_sign.sign_name 
             #    self.signs.markers.append(sign_marker)
-            #    marker_array.markers.append(sign_marker)
             #    self.sign_detected = False
+
+            #you should be able to get the transform from map to the object if tf is publishing
+            #with synchronized clocks else i need to concatenate the two transforms using matrices 
+
+            """try:
+                (trans, rot) = listener.lookupTransform("map", "camera_rgb_optical_frame", rospy.Time(0))
+                object_pose.position = trans
+                object_pose.orientation = rot
+            except:
+                (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException)
+                continue"""
             
             #publish rviz markers for boundary polygon, frontier, signs 
-            self.marker_array_pub.publish(marker_array)
+            #self.marker_array_pub.publish(self.signs)
                 
             #update state value and display it on the log 
             state_result = exploration_client.get_state()
-            #rospy.loginfo("state_result: "+str(state_result))
+            rospy.loginfo("state_result: "+str(state_result))
             self.rate.sleep()
 
         rospy.loginfo("[Result] State: "+str(state_result))
@@ -130,90 +135,11 @@ class TurtlebotExploration:
           exploration_client.wait_for_result()
         rospy.loginfo("Area Explored! Success!")
     
-    """
-    put description, locations are PoseStamped messages
-    """
-    def check_locations(self, locations):
-         #initialise action server and SimpleActionClient 
-        movebase_server = '/move_base'
-        movebase_client = self.initialize_action_server(movebase_server, MoveBaseAction)  
-
-        #create marker array and add all signs to it 
-        marker_array = MarkerArray()
-        #marker_array.markers.extend(self.signs.markers)        
-
-        for location in locations:
-            # Creates a goal to send to the action server.
-            goal = MoveBaseGoal()
-            goal.target_pose.pose = location.pose
-            goal.target_pose.header.frame_id = 'map'
-            goal.target_pose.header.stamp = rospy.Time.now()
-
-            #create goal marker 
-            goal_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.35, 0.35, 0.35),
-            header=Header(frame_id='map'), color=ColorRGBA(0.0, 1.0, 0.0, 1.0))
-            goal_marker.pose = location.pose
-
-            #add goal marker to marker array
-            marker_array.markers.append(goal_marker)
-
-            #create the rviz marker for the signs 
-            #sign_marker = Marker(type=Marker.CUBE, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
-            #    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
-
-            # Sends the goal to the action server.
-            rospy.loginfo('Sending goal to action server: %s', goal)
-            movebase_client.send_goal(goal, feedback_cb=self.movebase_feedback_cb)
-
-            #perform navigation
-            state_result = movebase_client.get_state()
-
-            rospy.loginfo("state_result: "+str(state_result))
-            if state_result == PENDING:
-                rospy.loginfo("Action goal is pending...")
-            if state_result == ACTIVE:
-                rospy.loginfo("Action goal is being performed...")
-                
-            while state_result < DONE:
-                rospy.loginfo("Checking for danger signs while performing navigation....")
-
-                #if self.sign_detected:
-                #    sign_marker.pose = self.danger_sign.sign_pose.pose
-                #    marker_array.markers.append(sign_marker)
-                #    self.sign_detected = False
-
-                #publish rviz marker for goal
-                self.marker_array_pub.publish(marker_array)
-
-                #update state value and display it on the log 
-                state_result = movebase_client.get_state()
-                rospy.loginfo("state_result: "+str(state_result))
-                self.rate.sleep()
-            
-            #wait for the server to finish performing the action
-            movebase_client.wait_for_result()
-            rospy.loginfo("Location Reached! Success!")
 
 #create TurtlebotExploration object that initialises everything and start exploration
 turtlebot_exploration = TurtlebotExploration()
 turtlebot_exploration.perform_exploration()
-"""
-#save the map into a file
-uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-roslaunch.configure_logging(uuid)
-#configure and execute the launch file 
-launch = roslaunch.parent.ROSLaunchParent(uuid, ["/home/valeriofranchi/catkin_ws/src/exploration_main/launch/map_saver.launch"])
-launch.start()
 
-#define the map_saver generated file directories  
-map_name = rospy.get_param("~map_name")
-yaml_file_path = map_name + ".yaml"
-pgm_file_path = map_name + ".pgm"
-yaml_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", yaml_file_path)
-pgm_dir = os.path.join("home/valeriofranchi/catkin_ws/src/exploration_main", pgm_file_path)
-
-#if both files exist, wait for 3 seconds then stop the launch file 
-if os.path.exists(yaml_dir) and os.path.exists(pgm_dir):
-    time.sleep(3.0) 
-    launch.shutdown()
-"""
+#launch the map saver node 
+file_path = rospy.get_param("~bash_file")
+subprocess.call(file_path)
