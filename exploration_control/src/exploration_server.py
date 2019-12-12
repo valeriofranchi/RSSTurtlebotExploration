@@ -21,7 +21,7 @@ class ExplorationServer(object):
         #success
         rospy.loginfo('%s: Succeeded' % self._action_name)
         self._as.set_succeeded(self._result)
-        
+
 if __name__ == '__main__':
     rospy.init_node('exploration_server')
     server = ExplorationServer(rospy.get_name())

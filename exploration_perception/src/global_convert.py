@@ -103,6 +103,7 @@ def determine_worker(image_message, width, height, homography_matrix):
 	rospy.logwarn("MATRIX\n"+str(h))
 	rospy.logwarn("OUT SHAPE: "+str(out_points.shape))
 	x, y = list(out_points[0])
+	x, y = int(x), int(y)
 	cv_sign_img = cv_img[y:y+int(height), x:x+int(width)]
 	# CLAHE
 	cv_sign_hsv = cv2.cvtColor(cv_sign_img, cv2.COLOR_BGR2HSV)
@@ -110,10 +111,10 @@ def determine_worker(image_message, width, height, homography_matrix):
 	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
 	v = clahe.apply(v)
 	cv_sign_hsv = cv2.merge([h, s, v])
-	cv_sign_img = cv2.cvtColor(cv_sign_hsv, cv2.COLOR_HSV2BGR)
+	cv_sign_img = cv_sign_hsv#cv2.cvtColor(cv_sign_hsv, cv2.COLOR_HSV2BGR)
 	# Create histograms
 	# Colour space ranges
-	colour_space_ranges = [256, 256, 256]# [180, 256, 256]   # HSV
+	colour_space_ranges = [180, 256, 256]# [180, 256, 256]   # HSV
 	bin_divider = 10
 	bin_counts = [num // bin_divider for num in colour_space_ranges]
 	ch1, ch2, ch3 = cv2.split(cv_sign_img)  # Separate channels
@@ -123,14 +124,29 @@ def determine_worker(image_message, width, height, homography_matrix):
 	cv2.normalize(hist1, hist1)
 	cv2.normalize(hist2, hist2)
 	cv2.normalize(hist3, hist3)
-	g_sum = sum([i * hist2[i] for i in range(len(hist2))])	# how green it is
-	r_sum = sum([i * hist3[i] for i in range(len(hist3))])	# how red it is
-	return "alive" if g_sum>r_sum else "dead"		# is it more green than red?
+	#cv2.imshow("sign", cv_sign_img)
+	#cv2.waitKey(0)
+	#g_sum = sum([i * hist2[i] for i in range(len(hist2))])	# how green it is
+	#r_sum = sum([i * hist3[i] for i in range(len(hist3))])	# how red it is
+	#result = "green" if g_sum > r_sum else "red"
+	green_sum = sum(hist1[5:9])
+	result = "green" if green_sum > 0.15 else "red"
+	result += str(green_sum)
+	#display_hists([hist1, hist2, hist3], result)
+	#cv2.destroyAllWindows()
+	return "alive" if green_sum > 0.15 else "dead"		# is it more green than red?
+
+def display_hists(histograms, title):
+	fig, ax = plt.subplots(len(histograms))
+	fig.canvas.set_window_title(title)
+	for i, hist in enumerate(histograms):
+		ax[i].plot(np.arange(len(hist)), hist.ravel())
+	plt.show()
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
-
 	global seq
+	global pub
 	rospy.logdebug("Entered callback")
 	if len(msg.data) == 0:
 		return
@@ -146,7 +162,7 @@ def object_listener(msg):
 		rospy.logdebug("Entered try")
 
 		#Lookup transform of object to map (global cooridnates)
-		(trans,rot) = listener.lookupTransform('odom',object_frame, rospy.Time(0))
+		(trans,rot) = listener.lookupTransform('map',object_frame, rospy.Time(0))
 		rospy.logdebug("After lookup")
 
 		#Create empty message to send data
@@ -184,12 +200,13 @@ def object_listener(msg):
 					# Alive worker - 7, dead worker - 8
 					sign_id = 7 if worker_type=="alive" else 8
 			# Set pose ID to determined sign ID
-			object_Pose.sign_id = sign_id
+			object_Pose.sign_name.data = sign_to_name[sign_id]
+			rospy.logwarn("The detected sign is {}".format(object_Pose.sign_name.data))
 
 
 		else:							   #If not in dictionary set it to default value
 			rospy.logdebug("Object not in dictionary") 
-			object_Pose.sign_id = 99	
+			object_Pose.sign_name.data = "No object found"
 
 		object_Pose.sign_pose.header.seq = seq
 		seq += 1

@@ -9,22 +9,27 @@ import roslaunch
 import os
 
 def simplified_callback(msg):
-	rospy.loginfo("SIMPLIFIED\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
-		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+	pass
+	#rospy.loginfo("SIMPLIFIED\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+	#	msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
 
 def depth_callback(msg):
-	rospy.loginfo("DEPTH\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
-		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+	pass
+	#rospy.loginfo("DEPTH\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+	#	msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
 
 def original_callback(msg):
-	rospy.loginfo("RAW\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
-		msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
+	pass
+	#rospy.loginfo("RAW\nHeader:{}, Height:{}, Width:{}, Encoding:{}, isBigEndian:{}, Step:{}, Length of Data:{}".format(msg.header,
+	#	msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step, len(msg.data)))
 
 def image_callback(msg):
+	global bridge
+	global imagedecomp_pub
 	try:
 		image = bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
-		simplified_image = simplify(image)
-		image_message = bridge.cv2_to_imgmsg(simplified_image, "bgr8")
+		#simplified_image = simplify(image)
+		image_message = bridge.cv2_to_imgmsg(image, "bgr8")
 		image_message.header.stamp = rospy.Time.now()
 		image_message.header.frame_id = "camera_rgb_optical_frame"
 		imagedecomp_pub.publish(image_message)
@@ -87,26 +92,15 @@ def simplify(image):
 	return image
 
 rospy.init_node("simplify_image_node")
+bridge = CvBridge()
+imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
 depth_sub = rospy.Subscriber("/camera/depth_registered/image_raw", Image, depth_callback)
 simplified_sub = rospy.Subscriber("/camera/rgb/simplified", Image, simplified_callback)
 original_sub = rospy.Subscriber("/camera/rgb/image_rect_color", Image, original_callback)
-imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 #thresh_pub = rospy.Publisher("/thresholded_image",Image, queue_size=1)
-bridge = CvBridge()
 
 #simplify("/home/valeriofranchi/catkin_ws/src/exploration_perception/test/image0.png")
-
-"""
-uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-roslaunch.configure_logging(uuid)
-configure and execute the launch file 
-current_dir = os.getcwd()
-launch_file_name = "republish_image.launch"
-launch_path = os.path.join(current_dir, "../launch", launch_file_name)
-launch = roslaunch.parent.ROSLaunchParent(uuid, [launch_path])
-launch.start()
-"""
 
 rospy.spin()
 

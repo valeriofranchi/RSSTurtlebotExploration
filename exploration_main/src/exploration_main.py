@@ -2,20 +2,20 @@
 import os
 import time
 import random
-from math import fabs, pi
+from math import fabs, pi, sqrt, pow
 import tf
 import actionlib
 import roslaunch 
 import rospy
 from exploration_control.msg import ExplorationAction, ExplorationGoal
-from geometry_msgs.msg import PoseStamped, Twist, Pose, Vector3, PointStamped, Point32, Point, PolygonStamped
+from geometry_msgs.msg import PoseStamped, Twist, Pose, Vector3, PointStamped, Point32, Point, PolygonStamped, Transform
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from nav_msgs.msg import Odometry, MapMetaData, OccupancyGrid
 from std_msgs.msg import ColorRGBA, Header
 from tf.transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker, MarkerArray
 import subprocess
-#from exploration_perception.msg import DangerSign
+from exploration_perception.msg import DangerSign
 
 PENDING = 0
 ACTIVE = 1
@@ -28,8 +28,7 @@ class TurtlebotExploration:
     def __init__(self):
         #Initializes node, publishers and subscribers 
         rospy.init_node('map_navigation')
-        #self.sign_sub = rospy.Subscriber('/danger_signs', DangerSign, self.sign_callback) 
-        self.marker_array_pub = rospy.Publisher("/visualization_marker_array", MarkerArray, queue_size=1)
+        self.sign_sub = rospy.Subscriber('/danger_signs', DangerSign, self.sign_callback) 
         self.rate = rospy.Rate(20)
 
         #current robot pose coordinates updated by feedback callback function 
@@ -39,8 +38,8 @@ class TurtlebotExploration:
         self.yaw = 0.0
 
         #danger sign message and boolean describing if detection happened
-        #self.danger_sign = DangerSign()
-        #self.sign_detected = False
+        self.danger_sign = DangerSign()
+        self.sign_detected = False
         #self.signs = MarkerArray()
     
     """
@@ -60,16 +59,23 @@ class TurtlebotExploration:
     Subscriber to the '/danger_signs' topic; when a sign is detected it stores the DangerSign object and assigns the 
     boolean sign_detected a True value.
     """
-    #def sign_callback(self, msg):
-    #    self.danger_sign = msg
-    #    self.sign_detected = True
+    def sign_callback(self, msg):
+        self.danger_sign = msg
+        self.sign_detected = True
+        rospy.logwarn("SIGN CALLBACK: sign detected")
+
+    """
+    This function calculates the euclidean distance between two poses
+    """
+    def euclidean_distance(self, pose1, pose2):
+        return sqrt(pow(pose2.position.x - pose1.position.x, 2) + pow(pose2.position.y - pose1.position.y, 2))
 
     """
     This function performs the turtlebot exploration of the unknown environment until no next frontier to explore is found.
     """
     def perform_exploration(self):
-        #rospy.loginfo("Waiting for find_object_2d node to load...")
-        #rospy.sleep(20)
+        rospy.loginfo("Waiting for find_object_2d node to load...")
+        rospy.sleep(5)
 
         #initialise action server and SimpleActionClient 
         rospy.loginfo("Calling exploration server and initialising action client...")
@@ -80,10 +86,6 @@ class TurtlebotExploration:
         #perform exploration
         goal = ExplorationGoal()
 
-        #create the rviz marker for the signs 
-        #sign_marker = Marker(type=Marker.TEXT_VIEW_FACING, action=Marker.ADD, scale=Vector3(0.75, 0.75, 0.05),
-        #    header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0))
-
         # Sends the goal to the action server.
         rospy.loginfo('Sending goal to action server: %s', goal)
         exploration_client.send_goal(goal)
@@ -92,32 +94,26 @@ class TurtlebotExploration:
         state_result = exploration_client.get_state()
 
         rospy.loginfo("state_result: "+str(state_result))
-
-        #listener = tf.TransformListener()
-        #object_pose = Pose()
-
+        marker_array_pub = rospy.Publisher("/visualization_marker_array", MarkerArray, queue_size=1)
+        signs = MarkerArray()
         while state_result < DONE:
             rospy.loginfo("Checking for DEAD PEOPLE while performing exploration....")
 
-            #if self.sign_detected:
-            #    sign_marker.pose = self.danger_sign.sign_pose.pose
-            #    sign_marker.text = self.danger_sign.sign_name 
-            #    self.signs.markers.append(sign_marker)
-            #    self.sign_detected = False
+            if self.sign_detected == True:
+                if len(signs.markers) == 0 or not any([self.euclidean_distance(i.pose, self.danger_sign.sign_pose.pose) < 0.20 for i in signs.markers]):
+                    #create the rviz marker for the signs 
+                    signs.markers.append(Marker(type=Marker.TEXT_VIEW_FACING, scale=Vector3(1.0, 1.0, 0.2), text=self.danger_sign.sign_name.data,
+                        header=Header(frame_id='map'), color=ColorRGBA(1.0, 0.0, 0.0, 1.0), pose=self.danger_sign.sign_pose.pose))
+                self.sign_detected = False
 
-            #you should be able to get the transform from map to the object if tf is publishing
-            #with synchronized clocks else i need to concatenate the two transforms using matrices 
-
-            """try:
-                (trans, rot) = listener.lookupTransform("map", "camera_rgb_optical_frame", rospy.Time(0))
-                object_pose.position = trans
-                object_pose.orientation = rot
-            except:
-                (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException)
-                continue"""
+            id = 0
+            for sign in signs.markers:
+                sign.header.stamp = rospy.Time.now()
+                sign.id = id
+                id += 1 
             
-            #publish rviz markers for boundary polygon, frontier, signs 
-            #self.marker_array_pub.publish(self.signs)
+            marker_array_pub.publish(signs)
+            rospy.logwarn("Number of markers: {}".format(len(signs.markers)))
                 
             #update state value and display it on the log 
             state_result = exploration_client.get_state()
@@ -129,10 +125,7 @@ class TurtlebotExploration:
             rospy.logerr("Something went wrong in the Server Side")
         if state_result == WARN:
             rospy.logwarn("There is a warning in the Server Side")
-        else:
-          # Waits for the server to finish performing the action.
-          print 'Waiting for result...'
-          exploration_client.wait_for_result()
+        
         rospy.loginfo("Area Explored! Success!")
     
 
@@ -143,3 +136,4 @@ turtlebot_exploration.perform_exploration()
 #launch the map saver node 
 file_path = rospy.get_param("~bash_file")
 subprocess.call(file_path)
+#subprocess.call("./../catkin_ws/src/exploration_main/src/close.sh")

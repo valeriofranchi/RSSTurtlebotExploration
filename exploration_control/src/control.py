@@ -4,7 +4,7 @@ import sys
 import rospy, time, tf
 import math as math
 from nav_msgs.msg import Odometry, OccupancyGrid
-from final_project.srv import CentroidRequest, CentroidResponse, TrajectoryRequest, TrajectoryResponse, Trajectory, Centroid
+from exploration_mapping.srv import CentroidRequest, CentroidResponse, TrajectoryRequest, TrajectoryResponse, Trajectory, Centroid
 from geometry_msgs.msg import Twist, Point, PoseStamped
 from std_msgs.msg import Bool
 from tf.transformations import euler_from_quaternion
@@ -20,7 +20,7 @@ ANGLE_TOLERANCE = 0.05
 POS_REQUEST_RATE = 30.0
 PROCESS_COSTMAP = False
 ROTATE_AROUND_GRANULARITY = 9
-LINEAR_VELOCITY = 0.15
+LINEAR_VELOCITY = 0.075
 OBSTACLE_DETECTION_THRESHOLD = 0.75
 
 #currentPose = PoseStamped()
@@ -147,7 +147,7 @@ class RobotControl:
 
             feed = yaw_control.update(error)
 
-            self.publishTwist(0, feed)
+            self.publishTwist(0, feed * 0.2)
 
             rate.sleep()
 
@@ -240,7 +240,7 @@ def scanCallback(scanMessage):
 
     if not scanMessageQueue.empty():
         scanMessageQueue.get()
-
+            
     scanMessageQueue.put(scanMessage)
 
 #Processes the scan message received
@@ -400,7 +400,7 @@ def exploreEnvironment():
     global isNewTrajectoryReady
     global wasLocalGoalDefined
     global obstacleEncountered
-    global currentPose
+    #global currentPose
 
     teleop_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=5)
     control = RobotControl(teleop_pub, POS_REQUEST_RATE, ROTATE_AROUND_GRANULARITY, ANGLE_TOLERANCE, POS_TOLERANCE)
@@ -516,7 +516,7 @@ def main():
 
     #Subscribe to map updates
     map_sub = rospy.Subscriber('/map', OccupancyGrid, mapCallback, queue_size=1)
-    scan_sub = rospy.Subscriber('/scan', LaserScan, scanCallback, queue_size=1)
+    scan_sub = rospy.Subscriber('/scan_filtered', LaserScan, scanCallback, queue_size=1)
     # costmap_sub = rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, costmapCallback, queue_size=1)
     #Start requesting position in background
     Thread(target=request_pos_at_rate, name="Request_pos_at_rate Thread", args=[POS_REQUEST_RATE]).start()

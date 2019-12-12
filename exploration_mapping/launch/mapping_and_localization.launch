@@ -3,14 +3,15 @@ specified in the yaml file, together with the map_server node responsible for st
 map and the gmapping node responsible for mapping the environment-->
 
 <launch>
-    <arg name="scan_topic" default="/scan"/>
+
+    <node pkg="exploration_mapping" type="change_scan.py" name="change_scan_topic_node" output="screen">
+    </node>
 
     <node pkg="exploration_mapping" type="mapping.py" name="mapping_node" output="screen">
     </node>
 
-    <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+    <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" args="scan:=/scan_filtered" output="screen">
         <rosparam file="$(find exploration_mapping)/param/gmapping_params.yaml" command="load"/>
-        <remap from="laser" to="$(arg scan_topic)"/>
     </node>
 
 </launch>

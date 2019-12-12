@@ -4,18 +4,14 @@
     <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
 
     <!-- Launch perception-->
-    <!--include file="$(find exploration_perception)/launch/perception.launch"/-->
-
-    <!-- Launch move_base-->
-    <!--include file="$(find exploration_navigation)/launch/move_base_launch.launch"/-->
+    <include file="$(find exploration_perception)/launch/perception.launch"/>
 
     <!-- Launch exploration-->
-    <include file="$(find exploration_main)/launch/exploration.launch"/>
+    <include file="$(find exploration_control)/launch/exploration_server_launch.launch"/>
 
     <!-- Launch main node -->
-    <arg name="bash_file_path" default="$(find exploration_main)/src/map_saver.sh"/>
     <node pkg="exploration_main" type="exploration_main.py" name="main_node" output="screen">
-        <param name="bash_file" value="$(arg bash_file_path)" type="str"/>
+        <param name="bash_file" value="$(find exploration_main)/src/map_saver.sh" type="str"/>
     </node>
 
     <!-- Launch rviz config file -->

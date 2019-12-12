@@ -5,7 +5,7 @@ import rospy, math, heapq, Queue, threading
 from geometry_msgs.msg import Twist, Point, PoseStamped
 from nav_msgs.msg import Odometry, OccupancyGrid, MapMetaData, GridCells, Path
 from std_msgs.msg import Bool
-from final_project.srv import CentroidRequest, CentroidResponse, TrajectoryRequest, TrajectoryResponse, Trajectory, Centroid
+from exploration_mapping.srv import CentroidRequest, CentroidResponse, TrajectoryRequest, TrajectoryResponse, Trajectory, Centroid
 import gc
 
 SCALE_FACTOR = 4
