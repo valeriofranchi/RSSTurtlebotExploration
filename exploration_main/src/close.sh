@@ -1,1 +1,0 @@
-rosnode kill /simplify_image_node /slam_gmapping /sign_node /change_scan_topic /exploration_server /find_object_3d /mapping_node
