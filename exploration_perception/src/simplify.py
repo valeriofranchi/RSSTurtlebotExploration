@@ -28,32 +28,33 @@ This function takes the highest carboard pixel in the image, copies the whole ho
 row it lies in and pastes it for all the above rows so the lighting won't affect the feature detection
 """
 def simplify(image): 
-	#resize image 
+	# Resize image 
 	ratio = 500 / float(image.shape[0])
 	resized = cv2.resize(image, (int(ratio * image.shape[1]), 500))
 	cutoff_point = resized.shape[0] // 8
 	cutoff = np.zeros((cutoff_point, resized.shape[1], 3), np.uint8)
 	resized[:cutoff_point, :] = cutoff
-	#convert to hsv 
+	# Convert to HSV 
 	hsv = cv2.cvtColor(resized, cv2.COLOR_BGR2HSV)
 	h, s, v = cv2.split(hsv)
+	# Apply CLAHE technique 
 	clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
 	s = clahe.apply(s)
 	v = clahe.apply(v)
 	hsv = cv2.merge([h, s, v])
-	#create bounds, apply inRange function 
+	# Create bounds, apply inRange function 
 	cardboard_lower, cardboard_upper = (0, 0, 0), (179, 116, 133)
 	cardboard_mask = cv2.inRange(hsv, cardboard_lower, cardboard_upper)
-	#apply opening operation to remove blobs and bitwise AND it with resized image 
+	# Apply opening operation to remove blobs and bitwise AND it with resized image 
 	kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (9, 9))
 	opened = cv2.morphologyEx(cardboard_mask, cv2.MORPH_OPEN, kernel, iterations=6)
 	output = cv2.bitwise_and(resized, resized, mask=opened)
-	#find non zero pixels and then positions in matrix of these pixels 
+	# Find non zero pixels and then positions in matrix of these pixels 
 	non_zero_y = np.nonzero(output)[0]
-	#find max y value of these positions 
+	# Find max y value of these positions 
 	if len(non_zero_y) > 0:
 		maxy = np.min(non_zero_y)
-		#convert maxy for original size image and make every pixel above it black
+		# Convert maxy for original size image and make every pixel above it black
 		maxy_converted = int((maxy / float(resized.shape[0])) * image.shape[0]) 
 		if maxy_converted - 30 > 0:
 			overlay = np.array(image[maxy_converted-30, :] * maxy_converted-30)
@@ -64,10 +65,12 @@ def simplify(image):
 			image[:maxy_converted - 30, :] = overlay
 	return image
 
+# Initialise node, create CvBridge object and initialise subscriber and publisher 
 rospy.init_node("simplify_image_node")
 bridge = CvBridge()
 imagedecomp_pub = rospy.Publisher("/simplified_image/decompressed", Image, queue_size=1)
 image_sub = rospy.Subscriber("/camera/rgb/image_rect_color/compressed", CompressedImage, image_callback)
 
+# Spin the node 
 rospy.spin()
 
