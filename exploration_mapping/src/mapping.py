@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# This file was taken from https://github.com/bnurbekov/Turtlebot_Navigation
 
 import rospy, math, heapq, Queue, threading
 # Add additional imports for each of the message types used

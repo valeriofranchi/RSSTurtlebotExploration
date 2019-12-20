@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# This code was modified from https://github.com/bnurbekov/Turtlebot_Navigation
+# It was modified to prevent the robot from circling endlessly
 
 import sys
 import rospy, time, tf

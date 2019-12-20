@@ -1,6 +1,7 @@
 <!-- Launches the exploration server -->
 <launch>
 
+    <!-- Control node from https://github.com/bnurbekov/Turtlebot_Navigation, modified to prevent the turtle from rotating endlessly -->
     <node pkg="exploration_control" type="exploration_server.py" name="exploration_server" output="screen">
     </node>
     
