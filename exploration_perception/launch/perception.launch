@@ -1,9 +1,9 @@
-<!-- This file will launch the find_object_2d node or any other 
-script responsible for the perception side of the robot mission-->
+<!-- This file launches all nodes required for sign observation and
+determination script responsible for the perception side of the robot mission-->
 
 <launch>
 
-    <include file="$(find exploration_perception)/launch/globalconvertlaunch.launch"/>
+    <include file="$(find exploration_perception)/launch/global_convert.launch"/>
     <include file="$(find exploration_perception)/launch/republish_image.launch"/>
 
     <arg name="gui"             default="true"/>

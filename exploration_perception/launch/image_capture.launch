@@ -1,0 +1,7 @@
+<!-- This is used to launch get_images.py, used to save images from the Kinect camera-->
+
+<launch>
+	<node pkg="exploration_perception" type="image_capture.py" name="image_capture" output="screen">
+		<param name="/use_sim_time" value="true" type="bool"/>
+	</node>
+</launch>

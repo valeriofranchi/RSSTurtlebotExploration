@@ -1,3 +1,6 @@
+<!-- This file launches global_convert.py. It listens to the objects detected by 
+find_object_2d, republishing them as sign names and poses in the "/danger_signs" topic -->
+
 <launch>
 	<node pkg="exploration_perception" type="global_convert.py" name="sign_node" output="screen">
 		<param name="/use_sim_time" value="true" type="bool"/>

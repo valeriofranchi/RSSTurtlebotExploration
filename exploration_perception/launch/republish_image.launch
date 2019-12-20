@@ -1,3 +1,6 @@
+<!-- Launches simplify.py. Listens to compressed kinect image and 
+republishes uncompressed image to "/simplified_image/decompressed" -->
+
 <launch>
     <!--node name="decompress_image" pkg="image_transport" type="republish" output="screen"
         args="compressed in:=/simplified_image/compressed raw out:=/simplified_image/decompressed">

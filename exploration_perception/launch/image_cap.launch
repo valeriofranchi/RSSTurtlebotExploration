@@ -1,9 +1,0 @@
-<launch>
-	<!-- Launch mapping package launch file -->
-	<!-- <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/> -->
-	<!-- <include file="$(find exploration_perception)/launch/perception.launch"/> -->
-	
-	<node pkg="exploration_perception" type="get_calib_images.py" name="sign_node" output="screen">
-		<param name="/use_sim_time" value="true" type="bool"/>
-	</node>
-</launch>
