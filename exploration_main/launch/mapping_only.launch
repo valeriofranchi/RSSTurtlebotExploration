@@ -1,9 +1,10 @@
-    <!-- This file will only launch the mapping and localization node-->
+<!-- This file will launches mapping nodes -->
+
 <launch>
-    <!-- Launch mapping package launch file -->
+    <!-- Launches mapping package launch file -->
     <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
 
-     <!-- Launch rviz config file -->
+     <!-- Launch personalised rviz configuration file for mapping only -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find exploration_main)/rviz/mapping_config.rviz"/>
 
 </launch>

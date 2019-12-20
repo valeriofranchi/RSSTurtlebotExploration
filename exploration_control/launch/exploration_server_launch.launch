@@ -1,5 +1,7 @@
+<!-- Launches the exploration server -->
 <launch>
-    <!-- Launches the exploration server-->
+
     <node pkg="exploration_control" type="exploration_server.py" name="exploration_server" output="screen">
     </node>
+    
 </launch>

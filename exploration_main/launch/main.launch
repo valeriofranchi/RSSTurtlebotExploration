@@ -1,20 +1,21 @@
-    <!-- This file will launch all the necessary nodes, it is the main launch file-->
+<!-- This file will launch all the necessary nodes, it is the main launch file -->
 <launch>
-    <!-- Launch mapping -->
+
+    <!-- Launches mapping nodes -->
     <include file="$(find exploration_mapping)/launch/mapping_and_localization.launch"/>
 
-    <!-- Launch perception-->
+    <!-- Launches perception nodes -->
     <include file="$(find exploration_perception)/launch/perception.launch"/>
 
-    <!-- Launch exploration-->
+    <!-- Launches action server-->
     <include file="$(find exploration_control)/launch/exploration_server_launch.launch"/>
 
-    <!-- Launch main node -->
+    <!-- Launches main node with a link to the bash file that runs the map saver node -->
     <node pkg="exploration_main" type="exploration_main.py" name="main_node" output="screen">
         <param name="bash_file" value="$(find exploration_main)/src/map_saver.sh" type="str"/>
     </node>
 
-    <!-- Launch rviz config file -->
+    <!-- Launches personalised rviz configuration file -->
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find exploration_main)/rviz/final.rviz"/>
 
 </launch>

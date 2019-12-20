@@ -1,10 +1,5 @@
-<!--
-    This file will launch the move base node with all parameter files 
--->
+<!-- Launches the move base node with all parameter files -->
 <launch>
-
-  <!--include file="$(find turtlebot_navigation)/launch/includes/velocity_smoother.launch.xml"/>
-  <include file="$(find turtlebot_navigation)/launch/includes/safety_controller.launch.xml"/-->
 
   <arg name="odom_frame_id"   default="odom"/>
   <arg name="base_frame_id"   default="base_footprint"/>

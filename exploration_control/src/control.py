@@ -23,8 +23,6 @@ ROTATE_AROUND_GRANULARITY = 9
 LINEAR_VELOCITY = 0.075
 OBSTACLE_DETECTION_THRESHOLD = 0.75
 
-#currentPose = PoseStamped()
-
 #Impelements PID controller
 class PID:
     #Initializes PID
@@ -406,18 +404,6 @@ def exploreEnvironment():
     control = RobotControl(teleop_pub, POS_REQUEST_RATE, ROTATE_AROUND_GRANULARITY, ANGLE_TOLERANCE, POS_TOLERANCE)
 
     while not rospy.is_shutdown() and not exit:
-        #retrieve current position of robot inside the map 
-        """listener = tf.TransformListener()
-        try:
-            (trans, rot) = listener.lookupTransform("map", "base_footprint", rospy.Time(0))
-            currentPose.header.stamp = rospy.Time().now
-            currentPose.header.frame_id = 'map'
-            currentPose.pose.position = trans
-            currentPose.pose.orientation = rot
-        except:
-            (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException)
-            continue"""
-
         if abnormalTermination:
             #reset variables on abnormal termination
             abnormalTermination = False

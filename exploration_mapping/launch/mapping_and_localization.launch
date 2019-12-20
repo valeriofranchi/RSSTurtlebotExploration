@@ -1,15 +1,15 @@
-<!-- This file will launch the AMCL (Adaptive Monte Carlo Localization) node with the parameters 
-specified in the yaml file, together with the map_server node responsible for storing the generated 
-map and the gmapping node responsible for mapping the environment-->
-
+<!-- This file launches all necessary nodes for the mapping part -->
 <launch>
 
+    <!-- Launches node responsible for truncating scans higher than a certain value and republishing it -->
     <node pkg="exploration_mapping" type="change_scan.py" name="change_scan_topic_node" output="screen">
     </node>
 
+    <!-- Mapping node from https://github.com/bnurbekov/Turtlebot_Navigation involved in exploration section -->
     <node pkg="exploration_mapping" type="mapping.py" name="mapping_node" output="screen">
     </node>
 
+    <!-- Launches gmapping node with gmapping parameter file -->
     <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" args="scan:=/scan_filtered" output="screen">
         <rosparam file="$(find exploration_mapping)/param/gmapping_params.yaml" command="load"/>
     </node>

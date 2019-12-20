@@ -87,9 +87,13 @@ object_to_sign = {
 	57: 6
 }
 
+redFound = False
+greenFound = False
 
 # Determine whether a worker is dead or alive
 def determine_worker(image_message, width, height, homography_matrix):
+	global redFound
+	global greenFound
 	# Get cropped cv image
 	print("Checking worker! {},{}, len(mat):{}".format(width, height, len(homography_matrix)))
 	bridge = CvBridge()
@@ -130,18 +134,27 @@ def determine_worker(image_message, width, height, homography_matrix):
 	#r_sum = sum([i * hist3[i] for i in range(len(hist3))])	# how red it is
 	#result = "green" if g_sum > r_sum else "red"
 	green_sum = sum(hist1[5:9])
-	result = "green" if green_sum > 0.15 else "red"
+	result = "alive" if green_sum > 0.05 else "dead"
 	result += str(green_sum)
-	#display_hists([hist1, hist2, hist3], result)
+	display_hists([hist1, hist2, hist3], result)
+	if result == "alive":
+		greenFound = True
+	elif result == "dead":
+		redFound = True
 	#cv2.destroyAllWindows()
-	return "alive" if green_sum > 0.15 else "dead"		# is it more green than red?
+	return result		# is it more green than red?
 
 def display_hists(histograms, title):
+	global redFound
+	global greenFound
 	fig, ax = plt.subplots(len(histograms))
 	fig.canvas.set_window_title(title)
 	for i, hist in enumerate(histograms):
 		ax[i].plot(np.arange(len(hist)), hist.ravel())
-	plt.show()
+	if redFound == False:
+		plt.savefig("../catkin_ws/src/exploration_main/result/histred.png")
+	if greenFound == False:
+		plt.savefig("../catkin_ws/src/exploration_main/result/histgreen.png")
 
 #Define Interrupt method for when data is recieved from topic
 def object_listener(msg):
